@@ -559,8 +559,8 @@ export default function MyFinds() {
                   }
                 }}
                 placeholder={"+Add Finds\npaste links / drag files here\npress Enter to add"}
-                rows={4}
-                className="w-full min-h-[120px] resize-none bg-transparent text-right text-sm font-black leading-tight text-ink placeholder:text-ink placeholder:opacity-80 focus:outline-none"
+                rows={3}
+                className="w-full min-h-[88px] resize-none rounded-lg border-2 border-ink/70 bg-white/75 px-3 py-2 text-right text-sm font-black leading-tight text-ink placeholder:text-ink/70 focus:outline-none focus:border-ink"
               />
             </div>
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
