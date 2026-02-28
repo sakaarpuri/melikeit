@@ -47,12 +47,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [name, setName] = useState('');
   const [nameBusy, setNameBusy] = useState(false);
   const [nameError, setNameError] = useState('');
+  const isAuthCallbackPath = window.location.pathname.startsWith('/auth/callback');
 
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center bg-[#f5f5f5]">
         <div className="bg-white border-2 border-ink shadow-retro px-5 py-4 rounded-xl">
-          <p className="text-sm font-bold text-ink">Loading...</p>
+          <p className="text-sm font-bold text-ink">
+            {isAuthCallbackPath ? 'Completing sign-in...' : 'Loading...'}
+          </p>
         </div>
       </div>
     );
