@@ -22,6 +22,9 @@ create table if not exists public.finds (
   created_at timestamptz not null default now()
 );
 
+alter table public.finds
+add column if not exists preview_path text;
+
 create table if not exists public.find_comments (
   id uuid primary key default gen_random_uuid(),
   find_id uuid not null references public.finds (id) on delete cascade,
@@ -115,4 +118,3 @@ using (
   bucket_id = 'find_images'
   and split_part(name, '/', 1) = auth.uid()::text
 );
-

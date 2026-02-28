@@ -49,6 +49,7 @@ type DbFindRow = {
   description: string;
   url: string | null;
   image_path: string | null;
+  preview_path?: string | null;
   type: FindType;
   visibility: Visibility;
   section_id: string | null;
@@ -101,6 +102,10 @@ function mapFind(row: DbFindRow, signedImageUrl?: string): Find {
   };
 }
 
+function isMissingPreviewPathError(message?: string): boolean {
+  return !!message && message.toLowerCase().includes('preview_path');
+}
+
 export default function MyFinds() {
   const { user } = useAuth();
   const [sections, setSections] = useState<Section[]>([]);
@@ -151,11 +156,11 @@ export default function MyFinds() {
     setLoading(true);
     setError('');
 
-    const [{ data: sectionRows, error: sectionError }, { data: findRows, error: findError }] = await Promise.all([
+    const [{ data: sectionRows, error: sectionError }, { data: findRowsRaw, error: findError }] = await Promise.all([
       supabase.from('sections').select('id,user_id,name,visibility').order('created_at', { ascending: true }),
       supabase
         .from('finds')
-        .select('id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+        .select('id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
         .order('created_at', { ascending: false }),
     ]);
 
@@ -164,17 +169,30 @@ export default function MyFinds() {
       setLoading(false);
       return;
     }
-    if (findError) {
+    if (findError && !isMissingPreviewPathError(findError.message)) {
       setError(findError.message);
       setLoading(false);
       return;
+    }
+    let effectiveFindRowsRaw: unknown[] | null = (findRowsRaw ?? null) as unknown[] | null;
+    if (findError && isMissingPreviewPathError(findError.message)) {
+      const { data: fallbackRows, error: fallbackError } = await supabase
+        .from('finds')
+        .select('id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+        .order('created_at', { ascending: false });
+      if (fallbackError) {
+        setError(fallbackError.message);
+        setLoading(false);
+        return;
+      }
+      effectiveFindRowsRaw = (fallbackRows ?? null) as unknown[] | null;
     }
 
     const typedSections = (sectionRows ?? []) as unknown as DbSectionRow[];
     setSections(typedSections.map(mapSection));
 
-    const typedFinds = (findRows ?? []) as unknown as DbFindRow[];
-    const paths = typedFinds.map((f) => f.image_path).filter((p): p is string => !!p);
+    const typedFinds = (effectiveFindRowsRaw ?? []) as unknown as DbFindRow[];
+    const paths = typedFinds.flatMap((f) => [f.image_path, f.preview_path]).filter((p): p is string => !!p);
     const signedMap = new Map<string, string>();
     if (paths.length > 0) {
       const { data } = await supabase.storage.from('find_images').createSignedUrls(paths, 60 * 60);
@@ -183,7 +201,12 @@ export default function MyFinds() {
       });
     }
 
-    setFinds(typedFinds.map((row) => mapFind(row, row.image_path ? signedMap.get(row.image_path) : undefined)));
+    setFinds(
+      typedFinds.map((row) => {
+        const pathToSign = row.image_path ?? row.preview_path;
+        return mapFind(row, pathToSign ? signedMap.get(pathToSign) : undefined);
+      })
+    );
     setLoading(false);
   };
 
@@ -218,8 +241,18 @@ export default function MyFinds() {
     if (args.imageFile) {
       imagePath = await uploadImage(args.imageFile);
     }
+    let previewPath: string | undefined;
+    const trimmedUrl = args.url?.trim();
+    if (!imagePath && trimmedUrl) {
+      const { data, error: previewError } = await supabase.functions.invoke<{ previewPath: string }>('link-preview', {
+        body: { url: trimmedUrl },
+      });
+      if (!previewError && data?.previewPath) {
+        previewPath = data.previewPath;
+      }
+    }
 
-    const title = args.title.trim() || args.url.trim() || (args.imageFile ? args.imageFile.name : '') || 'Untitled find';
+    const title = args.title.trim() || trimmedUrl || (args.imageFile ? args.imageFile.name : '') || 'Untitled find';
     const sectionName = resolveSectionName(args.sectionId);
     const type = inferFindType({ sectionName, url: args.url, mimeType: args.imageFile?.type });
 
@@ -229,24 +262,47 @@ export default function MyFinds() {
         user_id: user.id,
         title,
         description: args.description ?? '',
-        url: args.url?.trim() || null,
+        url: trimmedUrl || null,
         image_path: imagePath ?? null,
+        preview_path: previewPath ?? null,
         type,
         visibility: 'all_friends',
         section_id: args.sectionId || null,
       })
-      .select('id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+      .select('id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
       .single();
 
-    if (insertError || !data) {
+    let insertedRowRaw = data as unknown;
+    if (insertError && isMissingPreviewPathError(insertError.message)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('finds')
+        .insert({
+          user_id: user.id,
+          title,
+          description: args.description ?? '',
+          url: trimmedUrl || null,
+          image_path: imagePath ?? null,
+          type,
+          visibility: 'all_friends',
+          section_id: args.sectionId || null,
+        })
+        .select('id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+        .single();
+      if (fallbackError || !fallbackData) {
+        setError(fallbackError?.message ?? 'Could not create find');
+        return;
+      }
+      insertedRowRaw = fallbackData;
+    } else if (insertError || !data) {
       setError(insertError?.message ?? 'Could not create find');
       return;
     }
 
-    const row = data as unknown as DbFindRow;
+    const row = insertedRowRaw as DbFindRow;
     let signedUrl: string | undefined;
-    if (row.image_path) {
-      const { data: signed } = await supabase.storage.from('find_images').createSignedUrl(row.image_path, 60 * 60);
+    const pathToSign = row.image_path ?? row.preview_path;
+    if (pathToSign) {
+      const { data: signed } = await supabase.storage.from('find_images').createSignedUrl(pathToSign, 60 * 60);
       signedUrl = signed?.signedUrl;
     }
     setFinds((prev) => [mapFind(row, signedUrl), ...prev]);
