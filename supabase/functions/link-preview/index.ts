@@ -9,6 +9,53 @@ type RequestBody = {
   url?: string;
 };
 
+function extractMetaContent(html: string, keys: string[]): string | null {
+  for (const key of keys) {
+    const pattern = new RegExp(
+      `<meta[^>]+(?:property|name)=["']${key.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')}["'][^>]*>`,
+      'i'
+    );
+    const tagMatch = html.match(pattern);
+    if (!tagMatch) continue;
+    const tag = tagMatch[0];
+    const contentMatch = tag.match(/content=["']([^"']+)["']/i);
+    if (contentMatch?.[1]) return contentMatch[1].trim();
+  }
+  return null;
+}
+
+function extFromContentType(contentType: string): string {
+  const normalized = contentType.toLowerCase().split(';')[0]?.trim();
+  if (normalized === 'image/jpeg') return 'jpg';
+  if (normalized === 'image/png') return 'png';
+  if (normalized === 'image/webp') return 'webp';
+  if (normalized === 'image/gif') return 'gif';
+  return 'bin';
+}
+
+async function fetchOgImageUrl(pageUrl: URL): Promise<URL | null> {
+  const response = await fetch(pageUrl.toString(), {
+    redirect: 'follow',
+    headers: {
+      'user-agent': 'meLikesItLinkPreview/1.0',
+      accept: 'text/html,application/xhtml+xml',
+    },
+  });
+  if (!response.ok) return null;
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().includes('text/html')) return null;
+  const html = await response.text();
+  const found = extractMetaContent(html, ['og:image', 'twitter:image', 'twitter:image:src']);
+  if (!found) return null;
+  try {
+    const absolute = new URL(found, response.url);
+    if (!/^https?:$/i.test(absolute.protocol)) return null;
+    return absolute;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -73,29 +120,55 @@ Deno.serve(async (req) => {
     }
 
     const screenshotUrl = `https://s.wordpress.com/mshots/v1/${encodeURIComponent(parsedUrl.toString())}?w=1200&h=800`;
-    const screenshotResponse = await fetch(screenshotUrl);
-    if (!screenshotResponse.ok) {
-      return new Response(JSON.stringify({ error: 'Could not fetch link preview.' }), {
-        status: 422,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const ogImageUrl = await fetchOgImageUrl(parsedUrl);
+
+    let imageResponse: Response | null = null;
+    let outputExt = 'jpg';
+    let outputContentType = 'image/jpeg';
+
+    if (ogImageUrl) {
+      const candidate = await fetch(ogImageUrl.toString(), {
+        redirect: 'follow',
+        headers: { 'user-agent': 'meLikesItLinkPreview/1.0', accept: 'image/*' },
       });
+      const candidateType = candidate.headers.get('content-type') ?? '';
+      const candidateLength = Number(candidate.headers.get('content-length') ?? '0');
+      const maxBytes = 5 * 1024 * 1024;
+      if (candidate.ok && candidateType.toLowerCase().startsWith('image/') && (candidateLength === 0 || candidateLength <= maxBytes)) {
+        imageResponse = candidate;
+        outputContentType = candidateType || outputContentType;
+        outputExt = extFromContentType(outputContentType);
+      }
     }
 
-    const contentType = screenshotResponse.headers.get('content-type') ?? 'image/jpeg';
-    if (!contentType.startsWith('image/')) {
-      return new Response(JSON.stringify({ error: 'Preview response is not an image.' }), {
-        status: 422,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!imageResponse) {
+      const screenshotResponse = await fetch(screenshotUrl);
+      if (!screenshotResponse.ok) {
+        return new Response(JSON.stringify({ error: 'Could not fetch link preview.' }), {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const contentType = screenshotResponse.headers.get('content-type') ?? 'image/jpeg';
+      if (!contentType.toLowerCase().startsWith('image/')) {
+        return new Response(JSON.stringify({ error: 'Preview response is not an image.' }), {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      imageResponse = screenshotResponse;
+      outputContentType = contentType;
+      outputExt = extFromContentType(outputContentType) || 'jpg';
     }
 
-    const imageBuffer = await screenshotResponse.arrayBuffer();
-    const previewPath = `${user.id}/link_previews/${crypto.randomUUID()}.jpg`;
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const previewPath = `${user.id}/link_previews/${crypto.randomUUID()}.${outputExt}`;
     const { error: uploadError } = await supabase.storage
       .from('find_images')
       .upload(previewPath, imageBuffer, {
         upsert: false,
-        contentType: 'image/jpeg',
+        contentType: outputContentType,
       });
 
     if (uploadError) {

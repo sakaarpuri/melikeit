@@ -42,6 +42,17 @@ function safeExtFromFile(file: File): string {
   return 'bin';
 }
 
+function isYouTubeUrl(url?: string | null): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    return host === 'youtu.be' || host === 'youtube.com' || host === 'm.youtube.com';
+  } catch {
+    return false;
+  }
+}
+
 type DbFindRow = {
   id: string;
   user_id: string;
@@ -243,7 +254,7 @@ export default function MyFinds() {
     }
     let previewPath: string | undefined;
     const trimmedUrl = args.url?.trim();
-    if (!imagePath && trimmedUrl) {
+    if (!imagePath && trimmedUrl && !isYouTubeUrl(trimmedUrl)) {
       const { data, error: previewError } = await supabase.functions.invoke<{ previewPath: string }>('link-preview', {
         body: { url: trimmedUrl },
       });
