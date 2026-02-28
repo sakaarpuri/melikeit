@@ -28,10 +28,36 @@ interface FindCardProps {
   author: User;
 }
 
+function getYouTubeVideoId(url?: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = parsed.pathname.split('/').filter(Boolean)[0];
+      return id ?? null;
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      const videoParam = parsed.searchParams.get('v');
+      if (videoParam) return videoParam;
+
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      const markerIndex = parts.findIndex((part) => part === 'embed' || part === 'shorts' || part === 'live');
+      if (markerIndex >= 0 && parts[markerIndex + 1]) return parts[markerIndex + 1];
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export default function FindCard({ find, author }: FindCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
+  const [erroredVideoThumbUrl, setErroredVideoThumbUrl] = useState('');
   const { user } = useAuth();
   const [likes, setLikes] = useState<string[]>(() => find.likes);
   const [comments, setComments] = useState(() => find.comments);
@@ -49,6 +75,8 @@ export default function FindCard({ find, author }: FindCardProps) {
   const currentUserId = user?.id ?? '';
   const liked = !!currentUserId && likes.includes(currentUserId);
   const displayTitle = find.title.trim() || TYPE_LABELS[find.type];
+  const youtubeId = getYouTubeVideoId(find.url);
+  const videoThumbnailUrl = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : '';
   const linkPreviewUrl = find.url ? `https://s.wordpress.com/mshots/v1/${encodeURIComponent(find.url)}?w=1200&h=800` : '';
 
   useEffect(() => {
@@ -82,6 +110,14 @@ export default function FindCard({ find, author }: FindCardProps) {
             src={find.imageUrl}
             alt={displayTitle}
             className="block w-full h-56 object-cover"
+          />
+        ) : videoThumbnailUrl && erroredVideoThumbUrl !== videoThumbnailUrl ? (
+          <img
+            src={videoThumbnailUrl}
+            alt={displayTitle}
+            className="block w-full h-56 object-cover"
+            loading="lazy"
+            onError={() => setErroredVideoThumbUrl(videoThumbnailUrl)}
           />
         ) : find.url && erroredPreviewUrl !== find.url ? (
           <img
