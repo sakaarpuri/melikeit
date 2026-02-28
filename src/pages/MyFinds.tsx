@@ -402,6 +402,21 @@ export default function MyFinds() {
     }
   };
 
+  const updateFindInState = (findId: string, patch: { title: string; description: string; url?: string }) => {
+    setFinds((prev) =>
+      prev.map((find) =>
+        find.id === findId
+          ? {
+            ...find,
+            title: patch.title,
+            description: patch.description,
+            url: patch.url,
+          }
+          : find
+      )
+    );
+  };
+
   const createSection = async (args: { name: string; visibility: Visibility }) => {
     if (!user) return;
     const supabase = getSupabase();
@@ -604,7 +619,7 @@ export default function MyFinds() {
         >
           {filtered.map((find) => (
             <div key={find.id} className="break-inside-avoid mb-6">
-              <FindCard find={find} author={me} />
+              <FindCard find={find} author={me} onUpdate={updateFindInState} />
             </div>
           ))}
         </div>

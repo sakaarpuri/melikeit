@@ -26,6 +26,7 @@ const TYPE_LABELS: Record<FindType, string> = {
 interface FindCardProps {
   find: Find;
   author: User;
+  onUpdate?: (findId: string, patch: { title: string; description: string; url?: string }) => void;
 }
 
 function getYouTubeVideoId(url?: string): string | null {
@@ -53,11 +54,19 @@ function getYouTubeVideoId(url?: string): string | null {
   return null;
 }
 
-export default function FindCard({ find, author }: FindCardProps) {
+export default function FindCard({ find, author, onUpdate }: FindCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
   const [erroredVideoThumbUrl, setErroredVideoThumbUrl] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editTitle, setEditTitle] = useState(() => find.title);
+  const [editDescription, setEditDescription] = useState(() => find.description);
+  const [editUrl, setEditUrl] = useState(() => find.url ?? '');
   const { user } = useAuth();
   const [likes, setLikes] = useState<string[]>(() => find.likes);
   const [comments, setComments] = useState(() => find.comments);
@@ -74,6 +83,7 @@ export default function FindCard({ find, author }: FindCardProps) {
   const dot = TYPE_DOT[find.type];
   const currentUserId = user?.id ?? '';
   const liked = !!currentUserId && likes.includes(currentUserId);
+  const canEdit = !!currentUserId && currentUserId === find.authorId;
   const displayTitle = find.title.trim() || TYPE_LABELS[find.type];
   const youtubeId = getYouTubeVideoId(find.url);
   const videoThumbnailUrl = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : '';
@@ -172,6 +182,14 @@ export default function FindCard({ find, author }: FindCardProps) {
 
           <div className="flex gap-1.5 shrink-0">
             <button
+              onClick={() => setShowDetails(!showDetails)}
+              className={`px-2 py-1 border-2 border-ink text-[11px] font-black uppercase tracking-wider ${
+                showDetails ? 'bg-cyan text-ink' : 'bg-white text-ink'
+              }`}
+            >
+              D
+            </button>
+            <button
               onClick={() => setShowComments(!showComments)}
               className="px-2 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
             >
@@ -202,6 +220,137 @@ export default function FindCard({ find, author }: FindCardProps) {
         <p className="text-sm font-medium leading-snug text-ink/85 line-clamp-3">
           {find.description || 'No description added yet.'}
         </p>
+
+        {showDetails && (
+          <div className="mt-3 pt-3 border-t border-ink/20 space-y-2">
+            {!isEditing ? (
+              <>
+                <p className="text-xs font-bold text-ink/70 uppercase tracking-wider">Full details</p>
+                <p className="text-sm font-medium leading-snug text-ink/90 whitespace-pre-wrap">
+                  {find.description || 'No description added yet.'}
+                </p>
+                {find.url && (
+                  <a
+                    href={find.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-xs font-black text-ink underline break-all"
+                  >
+                    {find.url}
+                  </a>
+                )}
+                {canEdit && (
+                  <div className="pt-1">
+                    <button
+                      onClick={() => {
+                        setIsEditing(true);
+                        setSaveStatus('');
+                        setSaveError('');
+                        setEditTitle(find.title);
+                        setEditDescription(find.description);
+                        setEditUrl(find.url ?? '');
+                      }}
+                      className="px-3 py-1.5 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!currentUserId) return;
+                  const supabase = getSupabase();
+                  if (!supabase) {
+                    setSaveError('Supabase is not configured.');
+                    return;
+                  }
+                  const nextTitle = editTitle.trim() || 'Untitled find';
+                  const nextDescription = editDescription.trim();
+                  const rawUrl = editUrl.trim();
+                  const nextUrl = rawUrl ? (/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`) : null;
+                  if (nextUrl) {
+                    try {
+                      new URL(nextUrl);
+                    } catch {
+                      setSaveError('Please enter a valid URL.');
+                      setSaveStatus('');
+                      return;
+                    }
+                  }
+
+                  setSaving(true);
+                  setSaveError('');
+                  setSaveStatus('');
+                  const { error } = await supabase
+                    .from('finds')
+                    .update({
+                      title: nextTitle,
+                      description: nextDescription,
+                      url: nextUrl,
+                    })
+                    .eq('id', find.id)
+                    .eq('user_id', currentUserId);
+                  setSaving(false);
+
+                  if (error) {
+                    setSaveError(error.message);
+                    return;
+                  }
+
+                  onUpdate?.(find.id, { title: nextTitle, description: nextDescription, url: nextUrl ?? undefined });
+                  setSaveStatus('Saved.');
+                  setIsEditing(false);
+                }}
+                className="space-y-2"
+              >
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Title"
+                  className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+                />
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Description"
+                  rows={4}
+                  className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-pink resize-y"
+                />
+                <input
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  placeholder="Link (optional)"
+                  className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-2.5 py-1 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
+                  >
+                    {saving ? 'Saving' : 'Save'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setSaveStatus('');
+                      setSaveError('');
+                    }}
+                    className="px-2.5 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {saveError && <p className="text-xs font-bold text-pink-dark">{saveError}</p>}
+              </form>
+            )}
+            {saveStatus && <p className="text-xs font-bold text-ink/70">{saveStatus}</p>}
+          </div>
+        )}
 
         {showComments && (
           <div className="mt-3 pt-3 space-y-2 border-t border-ink/20">
