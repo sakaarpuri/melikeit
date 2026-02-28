@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
 import FindCard from '../components/FindCard';
 import SectionManager from '../components/SectionManager';
 import CreateFindModal from '../components/CreateFindModal';
@@ -487,7 +486,6 @@ export default function MyFinds() {
               }}
             />
             <div
-              onClick={() => setShowModal(true)}
               onDragOver={(e) => {
                 e.preventDefault();
                 setIsDragging(true);
@@ -502,35 +500,25 @@ export default function MyFinds() {
                 const file = e.dataTransfer.files?.[0];
                 if (file) void createFromUpload(file);
               }}
-              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-full sm:w-[460px] ${
+              className={`px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-full sm:w-[460px] ${
                 isDragging
                   ? 'bg-cyan text-ink -translate-x-0.5 -translate-y-0.5 shadow-retro-lg'
                   : 'bg-pink text-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg'
               }`}
             >
-              <div className="w-full">
-                <div className="flex items-center gap-3">
-                  <Plus size={18} />
-                  <span className="leading-tight text-left">
-                    <span className="block text-xl">+Add Finds</span>
-                    <span className="block text-[12px] font-bold">paste links/ drag files here or click on me to add manually</span>
-                  </span>
-                </div>
-                <input
-                  value={quickLink}
-                  onChange={(e) => setQuickLink(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      void submitQuickLink();
-                    }
-                  }}
-                  placeholder="Paste link here and press Enter"
-                  className="mt-3 w-full rounded-lg border-2 border-ink/70 bg-white/80 px-3 py-2 text-sm font-semibold text-ink placeholder-ink/50 focus:outline-none focus:border-ink"
-                />
-              </div>
+              <textarea
+                value={quickLink}
+                onChange={(e) => setQuickLink(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void submitQuickLink();
+                  }
+                }}
+                placeholder={"+Add Finds\npaste links / drag files here\npress Enter to add"}
+                rows={4}
+                className="w-full min-h-[120px] resize-none bg-transparent text-right text-sm font-black leading-tight text-ink placeholder:text-ink placeholder:opacity-80 focus:outline-none"
+              />
             </div>
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
 
