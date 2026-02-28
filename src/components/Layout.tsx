@@ -101,30 +101,6 @@ export default function Layout() {
         <p className="text-xs text-ink/60 mt-0.5 font-medium">your finds, your people</p>
       </div>
 
-      <div className="px-3 pt-3 pb-2">
-        <button
-          onClick={() => {
-            openSettings();
-            closeMobileNav();
-          }}
-          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 border-2 border-ink bg-white hover:bg-white/70 transition-colors"
-          title="Open user settings"
-          aria-label="Open user settings"
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full border-2 border-ink" />
-          ) : (
-            <div className="w-8 h-8 rounded-full border-2 border-ink bg-white grid place-items-center text-xs font-black text-ink">
-              {displayName.slice(0, 1).toUpperCase()}
-            </div>
-          )}
-          <div className="min-w-0 flex-1 text-left">
-            <p className="text-xs font-bold text-ink truncate">{displayName}</p>
-            <p className="text-[10px] text-ink/60 font-medium">User settings</p>
-          </div>
-        </button>
-      </div>
-
       <nav className="flex flex-col gap-0.5 px-3 pt-2">
         <NavLink
           to="/"
@@ -160,8 +136,29 @@ export default function Layout() {
           <div className="w-3 h-3 rounded-full bg-ink" />
         </div>
         <button
+          onClick={() => {
+            openSettings();
+            closeMobileNav();
+          }}
+          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 border-2 border-ink bg-white hover:bg-white/70 transition-colors"
+          title="Open user settings"
+          aria-label="Open user settings"
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full border-2 border-ink" />
+          ) : (
+            <div className="w-8 h-8 rounded-full border-2 border-ink bg-white grid place-items-center text-xs font-black text-ink">
+              {displayName.slice(0, 1).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-xs font-bold text-ink truncate">{displayName}</p>
+            <p className="text-[10px] text-ink/60 font-medium">User settings</p>
+          </div>
+        </button>
+        <button
           onClick={() => getSupabase()?.auth.signOut()}
-          className="w-full px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
+          className="w-full -mt-2 relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
         >
           Sign out
         </button>

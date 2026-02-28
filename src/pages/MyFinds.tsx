@@ -334,14 +334,7 @@ export default function MyFinds() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <img src={me.avatarUrl} alt={me.displayName} className="w-11 h-11 rounded-full border-2 border-ink" />
-            <div>
-              <h1 className="text-2xl font-black text-ink uppercase tracking-tight">{me.displayName}</h1>
-            </div>
-          </div>
-
+        <div className="flex justify-end mb-6">
           <div className="flex flex-col items-stretch sm:items-end w-full sm:w-auto">
             <input
               ref={uploadInputRef}
