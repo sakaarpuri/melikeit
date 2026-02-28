@@ -20,6 +20,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [signupEmailSent, setSignupEmailSent] = useState(false);
+  const [resetStatus, setResetStatus] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
   const [name, setName] = useState('');
   const [nameBusy, setNameBusy] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -113,6 +115,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const submit = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
+      setResetStatus('');
       setBusy(true);
       try {
         const supabase = getSupabase();
@@ -143,10 +146,39 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const sendPasswordReset = async () => {
+      setError('');
+      setResetStatus('');
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        setError('Enter your email first, then click Forgot password.');
+        return;
+      }
+      const supabase = getSupabase();
+      if (!supabase) {
+        setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+        return;
+      }
+      const emailRedirectTo =
+        (import.meta.env.VITE_SUPABASE_REDIRECT_URL as string | undefined) ?? window.location.origin;
+      setResetBusy(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo: emailRedirectTo });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        setResetStatus('Password reset email sent.');
+      } finally {
+        setResetBusy(false);
+      }
+    };
+
     const switchMode = (nextMode: 'sign_in' | 'sign_up') => {
       setMode(nextMode);
       setPassword('');
       setError('');
+      setResetStatus('');
       setSignupEmailSent(false);
     };
 
@@ -171,7 +203,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => switchMode('sign_up')}
-                className={`flex-1 px-3 py-2 rounded-lg border-2 border-ink text-xs font-black uppercase tracking-wider ${
+                className={`px-2 py-1.5 rounded-lg border-2 border-ink text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${
                   mode === 'sign_up' ? 'bg-pink text-ink shadow-retro' : 'bg-white text-ink hover:bg-yellow'
                 }`}
               >
@@ -219,6 +251,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                   required
                   minLength={6}
                 />
+                {mode === 'sign_in' && (
+                  <button
+                    type="button"
+                    onClick={sendPasswordReset}
+                    disabled={resetBusy}
+                    className="text-xs font-black text-ink/70 hover:text-ink disabled:opacity-60"
+                  >
+                    {resetBusy ? 'Sending reset...' : 'Forgot password?'}
+                  </button>
+                )}
                 <button
                   disabled={busy}
                   className="w-full px-4 py-3 rounded-xl border-2 border-ink bg-pink text-ink font-black shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
@@ -226,6 +268,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
                   {busy ? 'Please wait...' : mode === 'sign_in' ? 'Sign in' : 'Create account'}
                 </button>
                 {error && <p className="text-xs font-bold text-pink-dark">{error}</p>}
+                {resetStatus && <p className="text-xs font-bold text-ink/70">{resetStatus}</p>}
                 {mode === 'sign_up' && (
                   <p className="text-xs text-ink/60 font-medium">
                     Password must be at least 6 characters and include a number or symbol.

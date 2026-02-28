@@ -94,12 +94,38 @@ export default function Layout() {
       <aside className="w-60 shrink-0 fixed top-0 left-0 h-screen border-r-2 border-ink bg-yellow flex flex-col z-40">
         {/* Logo */}
         <div className="px-5 pt-6 pb-4 border-b-2 border-ink/20">
-          <h1 className="text-2xl font-black text-ink tracking-tight">melikesit</h1>
+          <h1 className="text-2xl font-black tracking-tight">
+            <span className="text-ink">me</span>
+            <span className="text-pink">Likes</span>
+            <span className="text-ink">It</span>
+          </h1>
           <p className="text-xs text-ink/60 mt-0.5 font-medium">your finds, your people</p>
         </div>
 
-        {/* Nav — sits a bit lower than the logo */}
-        <nav className="flex flex-col gap-0.5 px-3 pt-8">
+        {/* Profile — below header line */}
+        <div className="px-3 pt-3 pb-2">
+          <button
+            onClick={openSettings}
+            className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 border-2 border-ink bg-white hover:bg-white/70 transition-colors"
+            title="Open user settings"
+            aria-label="Open user settings"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full border-2 border-ink" />
+            ) : (
+              <div className="w-8 h-8 rounded-full border-2 border-ink bg-white grid place-items-center text-xs font-black text-ink">
+                {displayName.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-xs font-bold text-ink truncate">{displayName}</p>
+              <p className="text-[10px] text-ink/60 font-medium">User settings</p>
+            </div>
+          </button>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex flex-col gap-0.5 px-3 pt-2">
           <NavLink
             to="/"
             end
@@ -135,36 +161,12 @@ export default function Layout() {
             <div className="w-3 h-3 rounded-full bg-cyan border-2 border-ink" />
             <div className="w-3 h-3 rounded-full bg-ink" />
           </div>
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={openSettings}
-              className="shrink-0 rounded-full hover:opacity-90 transition-opacity"
-              title="Open user settings"
-              aria-label="Open user settings"
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full border-2 border-ink" />
-              ) : (
-                <div className="w-8 h-8 rounded-full border-2 border-ink bg-white grid place-items-center text-xs font-black text-ink">
-                  {displayName.slice(0, 1).toUpperCase()}
-                </div>
-              )}
-            </button>
-            <button
-              onClick={openSettings}
-              className="min-w-0 flex-1 text-left rounded-lg px-2 py-1 hover:bg-white/40 transition-colors"
-              title="Open user settings"
-            >
-              <p className="text-xs font-bold text-ink truncate">{displayName}</p>
-              <p className="text-[10px] text-ink/60 font-medium">User settings</p>
-            </button>
-            <button
-              onClick={() => getSupabase()?.auth.signOut()}
-              className="px-2 py-1 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
+          <button
+            onClick={() => getSupabase()?.auth.signOut()}
+            className="w-full px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
+          >
+            Sign out
+          </button>
         </div>
       </aside>
 

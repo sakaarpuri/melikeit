@@ -378,7 +378,7 @@ export default function MyFinds() {
             >
               <Plus size={18} />
               <span className="leading-tight text-left">
-                <span className="block">to add new 'finds'</span>
+                <span className="block text-base">add new 'finds'</span>
                 <span className="block text-[12px] font-bold">paste links/ drag files here or click on me to add manually</span>
               </span>
             </button>
