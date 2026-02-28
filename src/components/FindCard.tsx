@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pencil } from 'lucide-react';
-import type { Find, User, FindType } from '../data/mockData';
+import type { Find, User, FindType, Section } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
 
@@ -27,7 +27,9 @@ const TYPE_LABELS: Record<FindType, string> = {
 interface FindCardProps {
   find: Find;
   author: User;
-  onUpdate?: (findId: string, patch: { title: string; description: string; url?: string }) => void;
+  sections?: Section[];
+  onUpdate?: (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string }) => void;
+  onDelete?: (findId: string) => void;
 }
 
 function getYouTubeVideoId(url?: string): string | null {
@@ -55,7 +57,7 @@ function getYouTubeVideoId(url?: string): string | null {
   return null;
 }
 
-export default function FindCard({ find, author, onUpdate }: FindCardProps) {
+export default function FindCard({ find, author, sections = [], onUpdate, onDelete }: FindCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
@@ -68,6 +70,7 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
   const [editTitle, setEditTitle] = useState(() => find.title);
   const [editDescription, setEditDescription] = useState(() => find.description);
   const [editUrl, setEditUrl] = useState(() => find.url ?? '');
+  const [editSectionId, setEditSectionId] = useState(() => find.sectionId ?? '');
   const { user } = useAuth();
   const [likes, setLikes] = useState<string[]>(() => find.likes);
   const [comments, setComments] = useState(() => find.comments);
@@ -250,6 +253,7 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
                         setEditTitle(find.title);
                         setEditDescription(find.description);
                         setEditUrl(find.url ?? '');
+                        setEditSectionId(find.sectionId ?? '');
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
                     >
@@ -292,6 +296,7 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
                       title: nextTitle,
                       description: nextDescription,
                       url: nextUrl,
+                      section_id: editSectionId || null,
                     })
                     .eq('id', find.id)
                     .eq('user_id', currentUserId);
@@ -302,7 +307,12 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
                     return;
                   }
 
-                  onUpdate?.(find.id, { title: nextTitle, description: nextDescription, url: nextUrl ?? undefined });
+                  onUpdate?.(find.id, {
+                    title: nextTitle,
+                    description: nextDescription,
+                    url: nextUrl ?? undefined,
+                    sectionId: editSectionId || undefined,
+                  });
                   setSaveStatus('Saved.');
                   setIsEditing(false);
                 }}
@@ -327,6 +337,18 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
                   placeholder="Link (optional)"
                   className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
                 />
+                <select
+                  value={editSectionId}
+                  onChange={(e) => setEditSectionId(e.target.value)}
+                  className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink focus:outline-none focus:border-pink"
+                >
+                  <option value="">No section</option>
+                  {sections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.name}
+                    </option>
+                  ))}
+                </select>
                 <div className="flex gap-2">
                   <button
                     type="submit"
@@ -345,6 +367,40 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
                     className="px-2.5 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!currentUserId) return;
+                      const firstConfirm = window.confirm('Delete this find?');
+                      if (!firstConfirm) return;
+                      const secondConfirm = window.confirm('Confirm again: this delete is permanent. Continue?');
+                      if (!secondConfirm) return;
+
+                      const supabase = getSupabase();
+                      if (!supabase) {
+                        setSaveError('Supabase is not configured.');
+                        return;
+                      }
+                      setSaving(true);
+                      setSaveError('');
+                      setSaveStatus('');
+                      const { error } = await supabase
+                        .from('finds')
+                        .delete()
+                        .eq('id', find.id)
+                        .eq('user_id', currentUserId);
+                      setSaving(false);
+                      if (error) {
+                        setSaveError(error.message);
+                        return;
+                      }
+                      onDelete?.(find.id);
+                    }}
+                    disabled={saving}
+                    className="px-2.5 py-1 border-2 border-ink bg-pink text-[11px] font-black uppercase tracking-wider text-ink disabled:opacity-60"
+                  >
+                    Delete
                   </button>
                 </div>
                 {saveError && <p className="text-xs font-bold text-pink-dark">{saveError}</p>}

@@ -141,6 +141,7 @@ export default function MyFinds() {
   const [quickLink, setQuickLink] = useState('');
   const [quickNote, setQuickNote] = useState('');
   const [quickNoteSaving, setQuickNoteSaving] = useState(false);
+  const [quickNoteSectionId, setQuickNoteSectionId] = useState('');
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const me: User = useMemo(() => {
@@ -394,7 +395,7 @@ export default function MyFinds() {
         title,
         description: raw,
         url: '',
-        sectionId: activeSection ?? '',
+        sectionId: quickNoteSectionId || activeSection || '',
       });
       setQuickNote('');
     } finally {
@@ -402,7 +403,7 @@ export default function MyFinds() {
     }
   };
 
-  const updateFindInState = (findId: string, patch: { title: string; description: string; url?: string }) => {
+  const updateFindInState = (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string }) => {
     setFinds((prev) =>
       prev.map((find) =>
         find.id === findId
@@ -411,10 +412,15 @@ export default function MyFinds() {
             title: patch.title,
             description: patch.description,
             url: patch.url,
+            sectionId: patch.sectionId,
           }
           : find
       )
     );
+  };
+
+  const removeFindFromState = (findId: string) => {
+    setFinds((prev) => prev.filter((find) => find.id !== findId));
   };
 
   const createSection = async (args: { name: string; visibility: Visibility }) => {
@@ -491,6 +497,18 @@ export default function MyFinds() {
           <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full sm:w-auto">
             <div className="w-full sm:w-[320px] bg-white border-2 border-ink rounded-xl shadow-retro p-4">
               <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
+              <select
+                value={quickNoteSectionId}
+                onChange={(e) => setQuickNoteSectionId(e.target.value)}
+                className="w-full mb-2 px-3 py-2 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink focus:outline-none focus:border-pink"
+              >
+                <option value="">No section</option>
+                {mySections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
               <textarea
                 value={quickNote}
                 onChange={(e) => setQuickNote(e.target.value)}
@@ -619,7 +637,13 @@ export default function MyFinds() {
         >
           {filtered.map((find) => (
             <div key={find.id} className="break-inside-avoid mb-6">
-              <FindCard find={find} author={me} onUpdate={updateFindInState} />
+              <FindCard
+                find={find}
+                author={me}
+                sections={mySections}
+                onUpdate={updateFindInState}
+                onDelete={removeFindFromState}
+              />
             </div>
           ))}
         </div>
