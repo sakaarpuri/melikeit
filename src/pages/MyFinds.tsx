@@ -633,7 +633,7 @@ export default function MyFinds() {
               : gridMode === 'cozy'
                 ? 'columns-1 md:columns-2 xl:columns-3'
                 : 'columns-1 sm:columns-2 xl:columns-3'
-          } mt-4`}
+          } mt-8`}
         >
           {filtered.map((find) => (
             <div key={find.id} className="break-inside-avoid mb-6">

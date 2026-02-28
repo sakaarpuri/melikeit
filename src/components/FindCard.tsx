@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { FileText, Pencil } from 'lucide-react';
 import type { Find, User, FindType, Section } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -143,12 +143,21 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           />
         ) : (
           <div
-            className="h-56 w-full"
+            className="h-56 w-full grid place-items-center text-white"
             style={{
               background:
                 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(135deg, #2d2d2d 0%, #111 65%, #1a1a1a 100%)',
             }}
-          />
+          >
+            <div className="text-center px-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 border-2 border-white/80 rounded-lg mb-2">
+                <FileText size={20} />
+              </div>
+              <p className="text-[11px] font-black uppercase tracking-wider">
+                {find.type === 'article' ? 'Article Preview Unavailable' : 'Preview Unavailable'}
+              </p>
+            </div>
+          </div>
         )}
 
         {find.url && (
@@ -403,6 +412,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                     Delete
                   </button>
                 </div>
+                <p className="text-[11px] font-bold text-ink/60">Delete requires two confirmations.</p>
                 {saveError && <p className="text-xs font-bold text-pink-dark">{saveError}</p>}
               </form>
             )}
