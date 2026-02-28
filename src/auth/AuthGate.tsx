@@ -12,6 +12,28 @@ function needsNameSetup(fullName: string): boolean {
   return !trimmed || trimmed.includes('@');
 }
 
+function resolveAuthRedirectUrl(): string {
+  const fallback = `${window.location.origin}/auth/callback`;
+  const configured = (import.meta.env.VITE_SUPABASE_REDIRECT_URL as string | undefined)?.trim();
+  if (!configured) return fallback;
+
+  try {
+    const configuredUrl = new URL(configured, window.location.origin);
+    const currentUrl = new URL(window.location.origin);
+    const configuredHost = configuredUrl.hostname.toLowerCase();
+    const currentHost = currentUrl.hostname.toLowerCase();
+    const configuredIsLocal = configuredHost === 'localhost' || configuredHost === '127.0.0.1';
+    const currentIsLocal = currentHost === 'localhost' || currentHost === '127.0.0.1';
+
+    if (!currentIsLocal && configuredIsLocal) return fallback;
+    if (currentUrl.protocol === 'https:' && configuredUrl.protocol !== 'https:') return fallback;
+
+    return configuredUrl.toString();
+  } catch {
+    return fallback;
+  }
+}
+
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const { loading, user } = useAuth();
   const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
@@ -123,8 +145,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
           return;
         }
-        const emailRedirectTo =
-          (import.meta.env.VITE_SUPABASE_REDIRECT_URL as string | undefined) ?? window.location.origin;
+        const emailRedirectTo = resolveAuthRedirectUrl();
         if (mode === 'sign_in') {
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) setError(error.message);
@@ -159,8 +180,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
         return;
       }
-      const emailRedirectTo =
-        (import.meta.env.VITE_SUPABASE_REDIRECT_URL as string | undefined) ?? window.location.origin;
+      const emailRedirectTo = resolveAuthRedirectUrl();
       setResetBusy(true);
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo: emailRedirectTo });

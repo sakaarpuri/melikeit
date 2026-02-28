@@ -8,6 +8,7 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<MyFinds />} />
+          <Route path="auth/callback" element={<MyFinds />} />
         </Route>
       </Routes>
     </BrowserRouter>
