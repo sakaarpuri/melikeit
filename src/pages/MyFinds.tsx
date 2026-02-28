@@ -124,6 +124,17 @@ export default function MyFinds() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [sortMode, setSortMode] = useState<'newest' | 'oldest' | 'most_liked'>(() => {
+    const raw = window.localStorage.getItem('melikeit.sortMode');
+    if (raw === 'oldest' || raw === 'most_liked' || raw === 'newest') return raw;
+    return 'newest';
+  });
+  const [gridMode, setGridMode] = useState<'cozy' | 'standard' | 'compact'>(() => {
+    const raw = window.localStorage.getItem('melikeit.gridMode');
+    if (raw === 'cozy' || raw === 'compact' || raw === 'standard') return raw;
+    return 'standard';
+  });
+
   const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
   const [showModal, setShowModal] = useState(false);
   const [dropError, setDropError] = useState('');
@@ -147,10 +158,28 @@ export default function MyFinds() {
   }, [user]);
 
   const mySections = useMemo(() => sections.filter((s) => s.userId === me.id), [sections, me.id]);
-  const filtered = useMemo(
-    () => (activeSection ? finds.filter((f) => f.sectionId === activeSection) : finds),
-    [finds, activeSection]
-  );
+  const filtered = useMemo(() => {
+    const base = activeSection ? finds.filter((f) => f.sectionId === activeSection) : finds;
+    const sorted = [...base];
+    sorted.sort((a, b) => {
+      if (sortMode === 'most_liked') {
+        const likeDelta = (b.likes?.length ?? 0) - (a.likes?.length ?? 0);
+        if (likeDelta !== 0) return likeDelta;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+      if (sortMode === 'oldest') return a.createdAt.getTime() - b.createdAt.getTime();
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
+    return sorted;
+  }, [finds, activeSection, sortMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem('melikeit.sortMode', sortMode);
+  }, [sortMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem('melikeit.gridMode', gridMode);
+  }, [gridMode]);
 
   const resolveSectionName = (sectionId?: string) => (
     sectionId ? mySections.find((section) => section.id === sectionId)?.name : undefined
@@ -496,11 +525,44 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-5">
+        <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-xs font-black text-ink/50 uppercase tracking-widest">{finds.length} finds</p>
+          <div className="flex flex-wrap items-center gap-2 justify-end">
+            <label className="text-[11px] font-black uppercase tracking-wider text-ink/60">Sort</label>
+            <select
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as 'newest' | 'oldest' | 'most_liked')}
+              className="px-2.5 py-2 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink shadow-retro"
+              aria-label="Sort finds"
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="most_liked">Most liked</option>
+            </select>
+
+            <label className="text-[11px] font-black uppercase tracking-wider text-ink/60 ml-1">Grid</label>
+            <select
+              value={gridMode}
+              onChange={(e) => setGridMode(e.target.value as 'cozy' | 'standard' | 'compact')}
+              className="px-2.5 py-2 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink shadow-retro"
+              aria-label="Grid density"
+            >
+              <option value="cozy">Cozy</option>
+              <option value="standard">Standard</option>
+              <option value="compact">Compact</option>
+            </select>
+          </div>
         </div>
 
-        <div className="columns-1 sm:columns-2 xl:columns-3 gap-6">
+        <div
+          className={`gap-6 ${
+            gridMode === 'compact'
+              ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4'
+              : gridMode === 'cozy'
+                ? 'columns-1 md:columns-2 xl:columns-3'
+                : 'columns-1 sm:columns-2 xl:columns-3'
+          }`}
+        >
           {filtered.map((find) => (
             <div key={find.id} className="break-inside-avoid mb-6">
               <FindCard find={find} author={me} />
