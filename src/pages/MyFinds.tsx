@@ -112,6 +112,7 @@ export default function MyFinds() {
   const [showModal, setShowModal] = useState(false);
   const [dropError, setDropError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [quickLink, setQuickLink] = useState('');
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const me: User = useMemo(() => {
@@ -264,6 +265,26 @@ export default function MyFinds() {
     await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
   };
 
+  const submitQuickLink = async () => {
+    const raw = quickLink.trim();
+    if (!raw) return;
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try {
+      const parsed = new URL(withProtocol);
+      const url = parsed.toString();
+      setDropError('');
+      await createFind({
+        title: url,
+        description: '',
+        url,
+        sectionId: activeSection ?? '',
+      });
+      setQuickLink('');
+    } catch {
+      setDropError('Please paste a valid link.');
+    }
+  };
+
   const createSection = async (args: { name: string; visibility: Visibility }) => {
     if (!user) return;
     const supabase = getSupabase();
@@ -347,7 +368,7 @@ export default function MyFinds() {
                 e.currentTarget.value = '';
               }}
             />
-            <button
+            <div
               onClick={() => setShowModal(true)}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -369,12 +390,30 @@ export default function MyFinds() {
                   : 'bg-pink text-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg'
               }`}
             >
-              <Plus size={18} />
-              <span className="leading-tight text-left">
-                <span className="block text-xl">+Add Finds</span>
-                <span className="block text-[12px] font-bold">paste links/ drag files here or click on me to add manually</span>
-              </span>
-            </button>
+              <div className="w-full">
+                <div className="flex items-center gap-3">
+                  <Plus size={18} />
+                  <span className="leading-tight text-left">
+                    <span className="block text-xl">+Add Finds</span>
+                    <span className="block text-[12px] font-bold">paste links/ drag files here or click on me to add manually</span>
+                  </span>
+                </div>
+                <input
+                  value={quickLink}
+                  onChange={(e) => setQuickLink(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void submitQuickLink();
+                    }
+                  }}
+                  placeholder="Paste link here and press Enter"
+                  className="mt-3 w-full rounded-lg border-2 border-ink/70 bg-white/80 px-3 py-2 text-sm font-semibold text-ink placeholder-ink/50 focus:outline-none focus:border-ink"
+                />
+              </div>
+            </div>
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
           </div>
         </div>
