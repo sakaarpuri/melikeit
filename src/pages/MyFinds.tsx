@@ -456,7 +456,7 @@ export default function MyFinds() {
 
   return (
     <div className="flex gap-6">
-      <div className="hidden md:block w-52 shrink-0 pt-14">
+      <div className="hidden md:block w-52 shrink-0 pt-24">
         <div className="bg-white rounded-xl border-2 border-ink shadow-retro p-4 sticky top-6">
           <div
             className={`px-2.5 py-2 rounded-lg cursor-pointer mb-2 text-sm font-black border-2 transition-all ${
