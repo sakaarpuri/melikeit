@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Pencil } from 'lucide-react';
 import type { Find, User, FindType } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -250,9 +251,10 @@ export default function FindCard({ find, author, onUpdate }: FindCardProps) {
                         setEditDescription(find.description);
                         setEditUrl(find.url ?? '');
                       }}
-                      className="px-3 py-1.5 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
                     >
-                      Edit
+                      <Pencil size={12} />
+                      Edit Details
                     </button>
                   </div>
                 )}
