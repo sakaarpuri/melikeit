@@ -441,7 +441,7 @@ export default function MyFinds() {
 
   return (
     <div className="flex gap-6">
-      <div className="hidden md:block w-52 shrink-0">
+      <div className="hidden md:block w-52 shrink-0 pt-14">
         <div className="bg-white rounded-xl border-2 border-ink shadow-retro p-4 sticky top-6">
           <div
             className={`px-2.5 py-2 rounded-lg cursor-pointer mb-2 text-sm font-black border-2 transition-all ${
@@ -473,7 +473,35 @@ export default function MyFinds() {
         </div>
 
         <div className="flex justify-end mb-6">
-          <div className="flex flex-col items-stretch sm:items-end w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full sm:w-auto">
+            <div className="w-full sm:w-[320px] bg-white border-2 border-ink rounded-xl shadow-retro p-4">
+              <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
+              <textarea
+                value={quickNote}
+                onChange={(e) => setQuickNote(e.target.value)}
+                placeholder="Type a note… (Cmd/Ctrl + Enter to add)"
+                rows={3}
+                className="w-full resize-none rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-semibold text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    void submitQuickNote();
+                  }
+                }}
+              />
+              <div className="mt-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void submitQuickNote()}
+                  disabled={quickNoteSaving || !quickNote.trim()}
+                  className="px-3 py-2 rounded-lg border-2 border-ink bg-yellow text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+                >
+                  {quickNoteSaving ? 'Adding…' : 'Add note'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-stretch w-full sm:w-auto">
             <input
               ref={uploadInputRef}
               type="file"
@@ -521,32 +549,6 @@ export default function MyFinds() {
               />
             </div>
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
-
-            <div className="mt-4 w-full sm:w-[460px] bg-white border-2 border-ink rounded-xl shadow-retro p-4">
-              <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
-              <textarea
-                value={quickNote}
-                onChange={(e) => setQuickNote(e.target.value)}
-                placeholder="Type a note… (Cmd/Ctrl + Enter to add)"
-                rows={3}
-                className="w-full resize-none rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-semibold text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                    e.preventDefault();
-                    void submitQuickNote();
-                  }
-                }}
-              />
-              <div className="mt-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => void submitQuickNote()}
-                  disabled={quickNoteSaving || !quickNote.trim()}
-                  className="px-3 py-2 rounded-lg border-2 border-ink bg-yellow text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
-                >
-                  {quickNoteSaving ? 'Adding…' : 'Add note'}
-                </button>
-              </div>
             </div>
           </div>
         </div>
