@@ -456,7 +456,7 @@ export default function MyFinds() {
 
   return (
     <div className="flex gap-6">
-      <div className="hidden md:block w-52 shrink-0 pt-24">
+      <div className="hidden md:block w-52 shrink-0 pt-28">
         <div className="bg-white rounded-xl border-2 border-ink shadow-retro p-4 sticky top-6">
           <div
             className={`px-2.5 py-2 rounded-lg cursor-pointer mb-2 text-sm font-black border-2 transition-all ${
@@ -615,7 +615,7 @@ export default function MyFinds() {
               : gridMode === 'cozy'
                 ? 'columns-1 md:columns-2 xl:columns-3'
                 : 'columns-1 sm:columns-2 xl:columns-3'
-          }`}
+          } mt-4`}
         >
           {filtered.map((find) => (
             <div key={find.id} className="break-inside-avoid mb-6">
