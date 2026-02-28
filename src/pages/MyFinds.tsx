@@ -334,7 +334,7 @@ export default function MyFinds() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <img src={me.avatarUrl} alt={me.displayName} className="w-11 h-11 rounded-full border-2 border-ink" />
             <div>
@@ -342,7 +342,7 @@ export default function MyFinds() {
             </div>
           </div>
 
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-stretch sm:items-end w-full sm:w-auto">
             <input
               ref={uploadInputRef}
               type="file"
@@ -370,7 +370,7 @@ export default function MyFinds() {
                 const file = e.dataTransfer.files?.[0];
                 if (file) void createFromUpload(file);
               }}
-              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-[460px] ${
+              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-full sm:w-[460px] ${
                 isDragging
                   ? 'bg-cyan text-ink -translate-x-0.5 -translate-y-0.5 shadow-retro-lg'
                   : 'bg-pink text-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg'
