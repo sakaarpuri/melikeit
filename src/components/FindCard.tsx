@@ -31,6 +31,7 @@ interface FindCardProps {
 export default function FindCard({ find, author }: FindCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
   const { user } = useAuth();
   const [likes, setLikes] = useState<string[]>(() => find.likes);
   const [comments, setComments] = useState(() => find.comments);
@@ -48,6 +49,7 @@ export default function FindCard({ find, author }: FindCardProps) {
   const currentUserId = user?.id ?? '';
   const liked = !!currentUserId && likes.includes(currentUserId);
   const displayTitle = find.title.trim() || TYPE_LABELS[find.type];
+  const linkPreviewUrl = find.url ? `https://s.wordpress.com/mshots/v1/${encodeURIComponent(find.url)}?w=1200&h=800` : '';
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setNowMs(Date.now()), 0);
@@ -80,6 +82,14 @@ export default function FindCard({ find, author }: FindCardProps) {
             src={find.imageUrl}
             alt={displayTitle}
             className="block w-full h-56 object-cover"
+          />
+        ) : find.url && erroredPreviewUrl !== find.url ? (
+          <img
+            src={linkPreviewUrl}
+            alt={displayTitle}
+            className="block w-full h-56 object-cover"
+            loading="lazy"
+            onError={() => setErroredPreviewUrl(find.url ?? '')}
           />
         ) : (
           <div
