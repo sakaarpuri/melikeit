@@ -6,10 +6,19 @@ import CreateFindModal from '../components/CreateFindModal';
 import type { Comment, Find, FindType, Section, User, Visibility } from '../data/mockData';
 import { JOKES_OF_THE_DAY } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
-import { supabase } from '../supabase/client';
+import { getSupabase } from '../supabase/client';
 
 const todaysJoke = JOKES_OF_THE_DAY[new Date().getDate() % JOKES_OF_THE_DAY.length];
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+function handleFromName(name?: string): string {
+  const raw = (name ?? '').trim().toLowerCase();
+  const slug = raw
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 24);
+  return slug || 'me';
+}
 
 function inferFindType(args: { sectionName?: string; url?: string; mimeType?: string }): FindType {
   const section = args.sectionName?.toLowerCase() ?? '';
@@ -106,10 +115,11 @@ export default function MyFinds() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const me: User = useMemo(() => {
-    const displayName = (user?.user_metadata?.full_name as string | undefined) ?? user?.email ?? 'Me';
+    const fullName = user?.user_metadata?.full_name as string | undefined;
+    const displayName = fullName ?? 'Me';
     const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined)
       ?? `https://api.dicebear.com/7.x/personas/svg?seed=${encodeURIComponent(user?.email ?? 'me')}`;
-    const username = (user?.email ?? 'me').split('@')[0] ?? 'me';
+    const username = handleFromName(fullName);
     return {
       id: user?.id ?? 'me',
       username,
@@ -131,6 +141,12 @@ export default function MyFinds() {
 
   const loadAll = async () => {
     if (!user) return;
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -177,6 +193,8 @@ export default function MyFinds() {
 
   const uploadImage = async (file: File) => {
     if (!user) throw new Error('Not signed in');
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Supabase not configured');
     const ext = safeExtFromFile(file);
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from('find_images').upload(path, file, {
@@ -189,6 +207,11 @@ export default function MyFinds() {
 
   const createFind = async (args: { title: string; description: string; url: string; sectionId: string; imageFile?: File }) => {
     if (!user) return;
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
 
     let imagePath: string | undefined;
     if (args.imageFile) {
@@ -243,6 +266,11 @@ export default function MyFinds() {
 
   const createSection = async (args: { name: string; visibility: Visibility }) => {
     if (!user) return;
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
     const name = args.name.trim();
     if (!name) return;
     const { data, error: insertError } = await supabase
@@ -258,6 +286,8 @@ export default function MyFinds() {
   };
 
   const deleteSection = async (sectionId: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return;
     await supabase.from('sections').delete().eq('id', sectionId);
     setSections((prev) => prev.filter((s) => s.id !== sectionId));
     await loadAll();
@@ -309,7 +339,6 @@ export default function MyFinds() {
             <img src={me.avatarUrl} alt={me.displayName} className="w-11 h-11 rounded-full border-2 border-ink" />
             <div>
               <h1 className="text-2xl font-black text-ink uppercase tracking-tight">{me.displayName}</h1>
-              <p className="text-xs text-ink/50 font-medium">@{me.username}</p>
             </div>
           </div>
 
@@ -341,18 +370,18 @@ export default function MyFinds() {
                 const file = e.dataTransfer.files?.[0];
                 if (file) void createFromUpload(file);
               }}
-              className={`flex items-center gap-3 px-6 py-4 rounded-xl border-2 border-ink text-base font-black shadow-retro transition-all ${
+              className={`flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-[460px] ${
                 isDragging
                   ? 'bg-cyan text-ink -translate-x-0.5 -translate-y-0.5 shadow-retro-lg'
                   : 'bg-pink text-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg'
               }`}
             >
               <Plus size={18} />
-              {isDragging ? 'Drop image to add' : 'Add new find dragging files here'}
+              <span className="leading-tight text-left">
+                <span className="block">to add new 'finds'</span>
+                <span className="block text-[12px] font-bold">paste links/ drag files here or click on me to add manually</span>
+              </span>
             </button>
-            <p className="text-[11px] text-ink/60 mt-1.5 font-medium">
-              Click for the full form, or drag an image onto this button (max 10MB). Content will be auto organized.
-            </p>
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
           </div>
         </div>
@@ -360,6 +389,11 @@ export default function MyFinds() {
         {error && (
           <div className="mb-5 p-3 bg-white border-2 border-ink rounded-xl shadow-retro">
             <p className="text-sm font-bold text-ink">Error: {error}</p>
+            {error.includes("Could not find the table 'public.sections'") && (
+              <p className="text-xs text-ink/70 font-medium mt-2">
+                This usually means the database schema hasn’t been created yet. Run `supabase/schema.sql` in your Supabase SQL Editor, then refresh.
+              </p>
+            )}
           </div>
         )}
 

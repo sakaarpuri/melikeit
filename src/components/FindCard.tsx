@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Find, User, FindType } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
-import { supabase } from '../supabase/client';
+import { getSupabase } from '../supabase/client';
 
 const TYPE_DOT: Record<FindType, string> = {
   article: '#FF4D9E',
@@ -134,6 +134,8 @@ export default function FindCard({ find, author }: FindCardProps) {
             <button
               onClick={async () => {
                 if (!currentUserId) return;
+                const supabase = getSupabase();
+                if (!supabase) return;
                 if (liked) {
                   setLikes((prev) => prev.filter((id) => id !== currentUserId));
                   await supabase.from('find_likes').delete().eq('find_id', find.id).eq('user_id', currentUserId);
@@ -169,6 +171,8 @@ export default function FindCard({ find, author }: FindCardProps) {
               onSubmit={async (e) => {
                 e.preventDefault();
                 if (!currentUserId) return;
+                const supabase = getSupabase();
+                if (!supabase) return;
                 const text = commentText.trim();
                 if (!text) return;
                 setCommentText('');

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '../supabase/client';
+import { getSupabase } from '../supabase/client';
 import { AuthContext } from './AuthContext';
 import type { AuthState } from './AuthContext';
 import type { Session } from '@supabase/supabase-js';
@@ -10,6 +10,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      const timeoutId = window.setTimeout(() => {
+        if (!mounted) return;
+        setLoading(false);
+      }, 0);
+      return () => {
+        mounted = false;
+        window.clearTimeout(timeoutId);
+      };
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
@@ -35,4 +47,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
