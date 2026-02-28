@@ -98,10 +98,10 @@ export default function Layout() {
           <span className="text-pink">Likes</span>
           <span className="text-ink">It</span>
         </h1>
-        <p className="text-xs text-ink/60 mt-0.5 font-medium">your finds, your people</p>
+        <p className="text-xs text-ink/60 mt-0.5 font-medium">place for all your 'finds'</p>
       </div>
 
-      <nav className="flex flex-col gap-0.5 px-3 pt-2">
+      <nav className="flex flex-col gap-0.5 px-3 pt-4">
         <NavLink
           to="/"
           end
