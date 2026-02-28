@@ -101,7 +101,7 @@ export default function Layout() {
         <p className="text-xs text-ink/60 mt-0.5 font-medium">place for all your 'finds'</p>
       </div>
 
-      <nav className="flex flex-col gap-0.5 px-3 pt-4">
+      <nav className="flex flex-col gap-0.5 px-3 pt-8">
         <NavLink
           to="/"
           end
