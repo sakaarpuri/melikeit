@@ -16,6 +16,7 @@ export default function Layout() {
   const [friends, setFriends] = useState<Array<{ id: string; fullName: string; avatarUrl?: string }>>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendsStatus, setFriendsStatus] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
   const [inviteCreating, setInviteCreating] = useState(false);
   const [invitePrompt, setInvitePrompt] = useState<{ token: string; fromName: string; fromAvatarUrl?: string } | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
@@ -143,6 +144,7 @@ export default function Layout() {
 
     setInviteCreating(true);
     setFriendsStatus('');
+    setInviteLink('');
     const { data, error } = await supabase
       .from('friend_invites')
       .insert({
@@ -160,12 +162,23 @@ export default function Layout() {
       return;
     }
 
-    const inviteLink = `${window.location.origin}/?friendInvite=${encodeURIComponent(data.token as string)}`;
+    const nextInviteLink = `${window.location.origin}/?friendInvite=${encodeURIComponent(data.token as string)}`;
+    setInviteLink(nextInviteLink);
+    try {
+      await navigator.clipboard.writeText(nextInviteLink);
+      setFriendsStatus('Invite link copied.');
+    } catch {
+      setFriendsStatus('Invite link created. Use Copy.');
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
     try {
       await navigator.clipboard.writeText(inviteLink);
       setFriendsStatus('Invite link copied.');
     } catch {
-      setFriendsStatus(inviteLink);
+      setFriendsStatus('Could not copy link automatically.');
     }
   };
 
@@ -310,15 +323,7 @@ export default function Layout() {
 
       <div className="flex-1" />
 
-      <div className="mx-3 mb-3 p-3 bg-white border-2 border-ink rounded-lg shadow-retro">
-        <p className="text-xs font-black text-ink uppercase tracking-wide mb-1">🚫 House Rules</p>
-        <p className="text-xs text-ink/70 leading-snug font-medium">
-          No memes. No WhatsApp forwards. No Insta reposts.{' '}
-          <span className="text-pink font-black">We will judge you.</span>
-        </p>
-      </div>
-
-      <div className="px-5 pb-5 border-t-2 border-ink/20 pt-3 space-y-3">
+      <div className="mx-3 mb-3">
         <button
           onClick={() => {
             setShowFriends(true);
@@ -336,6 +341,17 @@ export default function Layout() {
             </p>
           </div>
         </button>
+      </div>
+
+      <div className="mx-3 mb-3 p-3 bg-white border-2 border-ink rounded-lg shadow-retro">
+        <p className="text-xs font-black text-ink uppercase tracking-wide mb-1">🚫 House Rules</p>
+        <p className="text-xs text-ink/70 leading-snug font-medium">
+          No memes. No WhatsApp forwards. No Insta reposts.{' '}
+          <span className="text-pink font-black">We will judge you.</span>
+        </p>
+      </div>
+
+      <div className="px-5 pb-5 border-t-2 border-ink/20 pt-3 space-y-3">
         <div className="flex gap-2">
           <div className="w-3 h-3 rounded-full bg-pink border-2 border-ink" />
           <div className="w-3 h-3 rounded-full bg-cyan border-2 border-ink" />
@@ -506,6 +522,21 @@ export default function Layout() {
               </div>
               {friendsStatus && (
                 <p className="text-xs font-bold text-ink/70 break-all">{friendsStatus}</p>
+              )}
+              {inviteLink && (
+                <div className="flex gap-2">
+                  <input
+                    value={inviteLink}
+                    readOnly
+                    className="flex-1 px-2 py-2 rounded-lg border-2 border-ink bg-white text-[11px] font-bold text-ink"
+                  />
+                  <button
+                    onClick={() => void copyInviteLink()}
+                    className="px-3 py-2 rounded-lg border-2 border-ink bg-cyan text-xs font-black text-ink"
+                  >
+                    Copy
+                  </button>
+                </div>
               )}
               <div className="border-2 border-ink rounded-lg max-h-72 overflow-y-auto">
                 {friendsLoading ? (
