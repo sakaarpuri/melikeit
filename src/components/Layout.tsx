@@ -543,6 +543,11 @@ export default function Layout() {
               </button>
             </div>
             <div className="p-5 space-y-3">
+              <div className="border-2 border-ink rounded-lg p-3 bg-white space-y-1">
+                <p className="text-[11px] font-black text-ink uppercase tracking-wide">Invite options</p>
+                <p className="text-[11px] font-medium text-ink/80">Invite link: send to someone new so they can join and connect.</p>
+                <p className="text-[11px] font-medium text-ink/80">Invite code: use only for friends who already have an account.</p>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => void createInviteLink()}
@@ -579,6 +584,7 @@ export default function Layout() {
               )}
               <div className="border-2 border-ink rounded-lg p-3 bg-white space-y-2">
                 <p className="text-[11px] font-black text-ink uppercase tracking-wide">Connect with code</p>
+                <p className="text-[11px] font-medium text-ink/80">For existing members only.</p>
                 <div className="flex gap-2">
                   <input
                     value={connectInput}
