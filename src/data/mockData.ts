@@ -16,6 +16,11 @@ export interface Find {
   description: string;
   url?: string;
   imageUrl?: string;
+  filePath?: string;
+  fileName?: string;
+  fileMime?: string;
+  fileSizeBytes?: number;
+  fileUrl?: string;
   type: FindType;
   visibility: Visibility;
   specificFriendIds?: string[];

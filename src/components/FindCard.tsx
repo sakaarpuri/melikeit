@@ -59,8 +59,6 @@ function getYouTubeVideoId(url?: string): string | null {
 }
 
 export default function FindCard({ find, author, sections = [], onUpdate, onDelete }: FindCardProps) {
-  const [showComments, setShowComments] = useState(false);
-  const [commentText, setCommentText] = useState('');
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
   const [erroredVideoThumbUrl, setErroredVideoThumbUrl] = useState('');
   const [showDetails, setShowDetails] = useState(false);
@@ -73,8 +71,6 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   const [editUrl, setEditUrl] = useState(() => find.url ?? '');
   const [editSectionId, setEditSectionId] = useState(() => find.sectionId ?? '');
   const { user } = useAuth();
-  const [likes, setLikes] = useState<string[]>(() => find.likes);
-  const [comments, setComments] = useState(() => find.comments);
   const [nowMs, setNowMs] = useState<number>(() => find.createdAt.getTime());
 
   const timeAgo = (date: Date) => {
@@ -87,7 +83,6 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
 
   const dot = TYPE_DOT[find.type];
   const currentUserId = user?.id ?? '';
-  const liked = !!currentUserId && likes.includes(currentUserId);
   const canEdit = !!currentUserId && currentUserId === find.authorId;
   const displayTitle = find.title.trim() || TYPE_LABELS[find.type];
   const youtubeId = getYouTubeVideoId(find.url);
@@ -150,13 +145,8 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(135deg, #2d2d2d 0%, #111 65%, #1a1a1a 100%)',
             }}
           >
-            <div className="text-center px-4">
-              <div className="inline-flex items-center justify-center w-12 h-12 border-2 border-white/80 rounded-lg mb-2">
+            <div className="inline-flex items-center justify-center w-12 h-12 border-2 border-white/80 rounded-lg">
                 <FileText size={20} />
-              </div>
-              <p className="text-[11px] font-black uppercase tracking-wider">
-                {find.type === 'article' ? 'Article Preview Unavailable' : 'Preview Unavailable'}
-              </p>
             </div>
           </div>
         )}
@@ -229,39 +219,6 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                 </button>
               </Tooltip>
             )}
-            <Tooltip label="Comments">
-              <button
-                onClick={() => setShowComments(!showComments)}
-                className="px-2 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
-                aria-label="Comments"
-                title="Comments"
-              >
-                C {comments.length}
-              </button>
-            </Tooltip>
-            <Tooltip label="Likes">
-              <button
-                onClick={async () => {
-                  if (!currentUserId) return;
-                  const supabase = getSupabase();
-                  if (!supabase) return;
-                  if (liked) {
-                    setLikes((prev) => prev.filter((id) => id !== currentUserId));
-                    await supabase.from('find_likes').delete().eq('find_id', find.id).eq('user_id', currentUserId);
-                  } else {
-                    setLikes((prev) => [...prev, currentUserId]);
-                    await supabase.from('find_likes').insert({ find_id: find.id, user_id: currentUserId });
-                  }
-                }}
-                className={`px-2 py-1 border-2 border-ink text-[11px] font-black uppercase tracking-wider ${
-                  liked ? 'bg-pink text-ink' : 'bg-white text-ink'
-                }`}
-                aria-label="Likes"
-                title="Likes"
-              >
-                L {likes.length}
-              </button>
-            </Tooltip>
           </div>
         </div>
 
@@ -286,6 +243,25 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                   >
                     {find.url}
                   </a>
+                )}
+                {find.fileUrl && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <a
+                      href={find.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-xs font-black text-ink underline"
+                    >
+                      Open file
+                    </a>
+                    <a
+                      href={find.fileUrl}
+                      download={find.fileName ?? true}
+                      className="inline-block text-xs font-black text-ink underline"
+                    >
+                      Download file
+                    </a>
+                  </div>
                 )}
                 {canEdit && (
                   <div className="pt-1">
@@ -452,59 +428,6 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
               </form>
             )}
             {saveStatus && <p className="text-xs font-bold text-ink/70">{saveStatus}</p>}
-          </div>
-        )}
-
-        {showComments && (
-          <div className="mt-3 pt-3 space-y-2 border-t border-ink/20">
-            {comments.map((comment) => (
-              <div key={comment.id} className="text-xs leading-snug text-ink/80">
-                <span className="font-black">
-                  {comment.authorId === currentUserId ? 'me' : comment.authorId}:
-                </span>{' '}
-                {comment.text}
-              </div>
-            ))}
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!currentUserId) return;
-                const supabase = getSupabase();
-                if (!supabase) return;
-                const text = commentText.trim();
-                if (!text) return;
-                setCommentText('');
-                const optimistic = { id: `cm_${Date.now()}`, authorId: currentUserId, text, createdAt: new Date() };
-                setComments((prev) => [...prev, optimistic]);
-                const { data, error } = await supabase
-                  .from('find_comments')
-                  .insert({ find_id: find.id, user_id: currentUserId, text })
-                  .select('id, user_id, text, created_at')
-                  .single();
-                if (error || !data) return;
-                setComments((prev) =>
-                  prev.map((c) =>
-                    c.id === optimistic.id
-                      ? { id: data.id as string, authorId: data.user_id as string, text: data.text as string, createdAt: new Date(data.created_at as string) }
-                      : c
-                  )
-                );
-              }}
-              className="flex gap-2 pt-1"
-            >
-              <input
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Add a comment..."
-                className="flex-1 px-2 py-1 rounded-none bg-white border-2 border-ink text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
-              />
-              <button
-                type="submit"
-                className="px-2.5 py-1 border-2 border-ink bg-yellow text-xs font-black"
-              >
-                Send
-              </button>
-            </form>
           </div>
         )}
 

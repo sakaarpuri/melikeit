@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import FindCard from '../components/FindCard';
 import SectionManager from '../components/SectionManager';
 import CreateFindModal from '../components/CreateFindModal';
-import type { Comment, Find, FindType, Section, User, Visibility } from '../data/mockData';
+import type { Find, FindType, Section, User, Visibility } from '../data/mockData';
 import { JOKES_OF_THE_DAY } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -106,11 +106,14 @@ type DbFindRow = {
   url: string | null;
   image_path: string | null;
   preview_path?: string | null;
+  file_path?: string | null;
+  file_name?: string | null;
+  file_mime?: string | null;
+  file_size_bytes?: number | null;
   type: FindType;
   visibility: Visibility;
   section_id: string | null;
   created_at: string;
-  find_comments?: Array<{ id: string; user_id: string; text: string; created_at: string }>;
   find_likes?: Array<{ user_id: string }>;
 };
 
@@ -130,13 +133,7 @@ function mapSection(row: DbSectionRow): Section {
   };
 }
 
-function mapFind(row: DbFindRow, signedImageUrl?: string): Find {
-  const comments: Comment[] = (row.find_comments ?? []).map((c) => ({
-    id: c.id,
-    authorId: c.user_id,
-    text: c.text,
-    createdAt: new Date(c.created_at),
-  }));
+function mapFind(row: DbFindRow, signedImageUrl?: string, signedFileUrl?: string): Find {
   const likes = (row.find_likes ?? []).map((l) => l.user_id);
 
   return {
@@ -146,6 +143,11 @@ function mapFind(row: DbFindRow, signedImageUrl?: string): Find {
     description: row.description,
     url: row.url ?? undefined,
     imageUrl: signedImageUrl,
+    filePath: row.file_path ?? undefined,
+    fileName: row.file_name ?? undefined,
+    fileMime: row.file_mime ?? undefined,
+    fileSizeBytes: row.file_size_bytes ?? undefined,
+    fileUrl: signedFileUrl,
     type: row.type,
     visibility: row.visibility,
     specificFriendIds: [],
@@ -153,13 +155,13 @@ function mapFind(row: DbFindRow, signedImageUrl?: string): Find {
     sectionId: row.section_id ?? undefined,
     likes,
     saved: [],
-    comments,
+    comments: [],
     createdAt: new Date(row.created_at),
   };
 }
 
-function isMissingPreviewPathError(message?: string): boolean {
-  return !!message && message.toLowerCase().includes('preview_path');
+function isMissingColumnError(message: string | undefined, column: string): boolean {
+  return !!message && message.toLowerCase().includes(`'${column.toLowerCase()}'`);
 }
 
 export default function MyFinds() {
@@ -249,11 +251,15 @@ export default function MyFinds() {
     setLoading(true);
     setError('');
 
+    const FIND_SELECT_WITH_FILES = 'id,user_id,title,description,url,image_path,preview_path,file_path,file_name,file_mime,file_size_bytes,type,visibility,section_id,created_at,find_likes(user_id)';
+    const FIND_SELECT_WITH_PREVIEW = 'id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_likes(user_id)';
+    const FIND_SELECT_LEGACY = 'id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_likes(user_id)';
+
     const [{ data: sectionRows, error: sectionError }, { data: findRowsRaw, error: findError }] = await Promise.all([
       supabase.from('sections').select('id,user_id,name,visibility').order('created_at', { ascending: true }),
       supabase
         .from('finds')
-        .select('id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+        .select(FIND_SELECT_WITH_FILES)
         .order('created_at', { ascending: false }),
     ]);
 
@@ -262,30 +268,53 @@ export default function MyFinds() {
       setLoading(false);
       return;
     }
-    if (findError && !isMissingPreviewPathError(findError.message)) {
+    if (
+      findError
+      && !isMissingColumnError(findError.message, 'preview_path')
+      && !isMissingColumnError(findError.message, 'file_path')
+      && !isMissingColumnError(findError.message, 'file_name')
+      && !isMissingColumnError(findError.message, 'file_mime')
+      && !isMissingColumnError(findError.message, 'file_size_bytes')
+    ) {
       setError(findError.message);
       setLoading(false);
       return;
     }
     let effectiveFindRowsRaw: unknown[] | null = (findRowsRaw ?? null) as unknown[] | null;
-    if (findError && isMissingPreviewPathError(findError.message)) {
+    if (findError) {
+      const fallbackSelect = isMissingColumnError(findError.message, 'preview_path')
+        ? FIND_SELECT_LEGACY
+        : FIND_SELECT_WITH_PREVIEW;
+
       const { data: fallbackRows, error: fallbackError } = await supabase
         .from('finds')
-        .select('id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+        .select(fallbackSelect)
         .order('created_at', { ascending: false });
-      if (fallbackError) {
+      if (fallbackError && fallbackSelect === FIND_SELECT_WITH_PREVIEW && isMissingColumnError(fallbackError.message, 'preview_path')) {
+        const { data: legacyRows, error: legacyError } = await supabase
+          .from('finds')
+          .select(FIND_SELECT_LEGACY)
+          .order('created_at', { ascending: false });
+        if (legacyError) {
+          setError(legacyError.message);
+          setLoading(false);
+          return;
+        }
+        effectiveFindRowsRaw = (legacyRows ?? null) as unknown[] | null;
+      } else if (fallbackError) {
         setError(fallbackError.message);
         setLoading(false);
         return;
+      } else {
+        effectiveFindRowsRaw = (fallbackRows ?? null) as unknown[] | null;
       }
-      effectiveFindRowsRaw = (fallbackRows ?? null) as unknown[] | null;
     }
 
     const typedSections = (sectionRows ?? []) as unknown as DbSectionRow[];
     setSections(typedSections.map(mapSection));
 
     const typedFinds = (effectiveFindRowsRaw ?? []) as unknown as DbFindRow[];
-    const paths = typedFinds.flatMap((f) => [f.image_path, f.preview_path]).filter((p): p is string => !!p);
+    const paths = typedFinds.flatMap((f) => [f.image_path, f.preview_path, f.file_path]).filter((p): p is string => !!p);
     const signedMap = new Map<string, string>();
     if (paths.length > 0) {
       const { data } = await supabase.storage.from('find_images').createSignedUrls(paths, 60 * 60);
@@ -297,7 +326,11 @@ export default function MyFinds() {
     setFinds(
       typedFinds.map((row) => {
         const pathToSign = row.image_path ?? row.preview_path;
-        return mapFind(row, pathToSign ? signedMap.get(pathToSign) : undefined);
+        return mapFind(
+          row,
+          pathToSign ? signedMap.get(pathToSign) : undefined,
+          row.file_path ? signedMap.get(row.file_path) : undefined
+        );
       })
     );
     setLoading(false);
@@ -322,7 +355,24 @@ export default function MyFinds() {
     return path;
   };
 
-  const createFind = async (args: { title: string; description: string; url: string; sectionId: string; imageFile?: File }) => {
+  const uploadFile = async (file: File) => {
+    if (!user) throw new Error('Not signed in');
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Supabase not configured');
+    const safeName = (file.name || 'file')
+      .replace(/[^\w.\- ]+/g, '_')
+      .replace(/\s+/g, '_')
+      .slice(0, 96);
+    const path = `${user.id}/files/${crypto.randomUUID()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from('find_images').upload(path, file, {
+      upsert: false,
+      contentType: file.type || 'application/octet-stream',
+    });
+    if (uploadError) throw uploadError;
+    return path;
+  };
+
+  const createFind = async (args: { title: string; description: string; url: string; sectionId: string; imageFile?: File; file?: File }) => {
     if (!user) return;
     const supabase = getSupabase();
     if (!supabase) {
@@ -333,6 +383,10 @@ export default function MyFinds() {
     let imagePath: string | undefined;
     if (args.imageFile) {
       imagePath = await uploadImage(args.imageFile);
+    }
+    let filePath: string | undefined;
+    if (args.file) {
+      filePath = await uploadFile(args.file);
     }
     let previewPath: string | undefined;
     let previewTitle: string | undefined;
@@ -349,10 +403,19 @@ export default function MyFinds() {
       }
     }
 
-    const title = args.title.trim() || previewTitle || trimmedUrl || (args.imageFile ? args.imageFile.name : '') || 'Untitled find';
+    const title = args.title.trim()
+      || previewTitle
+      || trimmedUrl
+      || (args.imageFile ? args.imageFile.name : '')
+      || (args.file ? args.file.name : '')
+      || 'Untitled find';
     const sectionName = resolveSectionName(args.sectionId);
-    const type = inferFindType({ sectionName, url: args.url, mimeType: args.imageFile?.type });
+    const type = inferFindType({ sectionName, url: args.url, mimeType: args.imageFile?.type ?? args.file?.type });
     const description = (args.description ?? '').trim() || previewDescription || '';
+
+    const FIND_INSERT_SELECT_WITH_FILES = 'id,user_id,title,description,url,image_path,preview_path,file_path,file_name,file_mime,file_size_bytes,type,visibility,section_id,created_at,find_likes(user_id)';
+    const FIND_INSERT_SELECT_WITH_PREVIEW = 'id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_likes(user_id)';
+    const FIND_INSERT_SELECT_LEGACY = 'id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_likes(user_id)';
 
     const { data, error: insertError } = await supabase
       .from('finds')
@@ -363,65 +426,117 @@ export default function MyFinds() {
         url: trimmedUrl || null,
         image_path: imagePath ?? null,
         preview_path: previewPath ?? null,
+        file_path: filePath ?? null,
+        file_name: args.file?.name ?? null,
+        file_mime: args.file?.type ?? null,
+        file_size_bytes: args.file?.size ?? null,
         type,
         visibility: 'all_friends',
         section_id: args.sectionId || null,
       })
-      .select('id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+      .select(FIND_INSERT_SELECT_WITH_FILES)
       .single();
 
     let insertedRowRaw = data as unknown;
-    if (insertError && isMissingPreviewPathError(insertError.message)) {
+    if (
+      insertError
+      && (
+        isMissingColumnError(insertError.message, 'preview_path')
+        || isMissingColumnError(insertError.message, 'file_path')
+        || isMissingColumnError(insertError.message, 'file_name')
+        || isMissingColumnError(insertError.message, 'file_mime')
+        || isMissingColumnError(insertError.message, 'file_size_bytes')
+      )
+    ) {
+      const baseInsert = {
+        user_id: user.id,
+        title,
+        description,
+        url: trimmedUrl || null,
+        image_path: imagePath ?? null,
+        type,
+        visibility: 'all_friends' as const,
+        section_id: args.sectionId || null,
+      };
+
+      const fileMissing = isMissingColumnError(insertError.message, 'file_path')
+        || isMissingColumnError(insertError.message, 'file_name')
+        || isMissingColumnError(insertError.message, 'file_mime')
+        || isMissingColumnError(insertError.message, 'file_size_bytes');
+      const previewMissing = isMissingColumnError(insertError.message, 'preview_path');
+      const fallbackInsert = fileMissing
+        ? baseInsert
+        : { ...baseInsert, preview_path: previewPath ?? null };
+      const fallbackSelect = fileMissing
+        ? (previewMissing ? FIND_INSERT_SELECT_LEGACY : FIND_INSERT_SELECT_WITH_PREVIEW)
+        : FIND_INSERT_SELECT_WITH_PREVIEW;
+
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('finds')
-        .insert({
-          user_id: user.id,
-          title,
-          description: args.description ?? '',
-          url: trimmedUrl || null,
-          image_path: imagePath ?? null,
-          type,
-          visibility: 'all_friends',
-          section_id: args.sectionId || null,
-        })
-        .select('id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_comments(id,user_id,text,created_at),find_likes(user_id)')
+        .insert(fallbackInsert)
+        .select(fallbackSelect)
         .single();
-      if (fallbackError || !fallbackData) {
+
+      if (fallbackError && fallbackSelect === FIND_INSERT_SELECT_WITH_PREVIEW && isMissingColumnError(fallbackError.message, 'preview_path')) {
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('finds')
+          .insert(baseInsert)
+          .select(FIND_INSERT_SELECT_LEGACY)
+          .single();
+        if (legacyError || !legacyData) {
+          setError(legacyError?.message ?? 'Could not create find');
+          return;
+        }
+        insertedRowRaw = legacyData;
+      } else if (fallbackError || !fallbackData) {
         setError(fallbackError?.message ?? 'Could not create find');
         return;
+      } else {
+        insertedRowRaw = fallbackData;
       }
-      insertedRowRaw = fallbackData;
     } else if (insertError || !data) {
       setError(insertError?.message ?? 'Could not create find');
       return;
     }
 
     const row = insertedRowRaw as DbFindRow;
-    let signedUrl: string | undefined;
+    let signedImageUrl: string | undefined;
+    let signedFileUrl: string | undefined;
     const pathToSign = row.image_path ?? row.preview_path;
     if (pathToSign) {
       const { data: signed } = await supabase.storage.from('find_images').createSignedUrl(pathToSign, 60 * 60);
-      signedUrl = signed?.signedUrl;
+      signedImageUrl = signed?.signedUrl;
     }
-    setFinds((prev) => [mapFind(row, signedUrl), ...prev]);
+    if (row.file_path) {
+      const { data: signedFile } = await supabase.storage.from('find_images').createSignedUrl(row.file_path, 60 * 60);
+      signedFileUrl = signedFile?.signedUrl;
+    }
+    setFinds((prev) => [mapFind(row, signedImageUrl, signedFileUrl), ...prev]);
   };
 
   const createFromUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      return;
-    }
     if (file.size > MAX_UPLOAD_BYTES) {
       setDropError('File is too large. Maximum size is 10MB.');
       return;
     }
     setDropError('');
-    await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
+    if (file.type.startsWith('image/')) {
+      await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
+      return;
+    }
+    await createFind({
+      title: file.name.replace(/\.[^/.]+$/, '') || file.name,
+      description: '',
+      url: '',
+      sectionId: activeSection ?? '',
+      file,
+    });
   };
 
   const processIncomingFiles = async (incoming: FileList | File[]) => {
-    const files = Array.from(incoming).filter((file) => file.type.startsWith('image/'));
+    const files = Array.from(incoming);
     if (files.length === 0) {
-      setDropError('No image files found.');
+      setDropError('No supported files or links found.');
       return;
     }
     setDropError('');
@@ -668,7 +783,6 @@ export default function MyFinds() {
               ref={uploadInputRef}
               type="file"
               multiple
-              accept="image/*"
               className="hidden"
               onChange={(e) => {
                 const files = e.target.files;
@@ -804,7 +918,9 @@ export default function MyFinds() {
               const url = extractFirstUrlFromDataTransfer(e.dataTransfer);
               if (url) {
                 void submitUrl(url);
+                return;
               }
+              setDropError('No supported files or links found.');
             }}
             className={`gap-6 ${
               gridMode === 'compact'
@@ -830,7 +946,7 @@ export default function MyFinds() {
           {isGridDragging && (
             <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-dashed border-ink bg-yellow/20 grid place-items-center">
               <div className="bg-white border-2 border-ink shadow-retro px-4 py-3 rounded-xl">
-                <p className="text-xs font-black uppercase tracking-wider text-ink">Drop to add finds (images or links)</p>
+                <p className="text-xs font-black uppercase tracking-wider text-ink">Drop to add finds (images, links, or files)</p>
               </div>
             </div>
           )}
@@ -867,11 +983,11 @@ export default function MyFinds() {
             </div>
             <div className="p-5 space-y-3 text-sm text-ink/80">
               <ul className="list-disc pl-5 space-y-2 text-sm font-medium">
-                <li>Drop screenshots anywhere on the grid</li>
+                <li>Drop screenshots, links, or files anywhere on the grid</li>
                 <li>Paste screenshot: Cmd/Ctrl+V</li>
                 <li>Type/paste a link in +Add Finds and press Enter</li>
                 <li>Quick note: Cmd/Ctrl+Enter</li>
-                <li>Card buttons: D=Details, C=Comments, L=Likes, pencil=Edit</li>
+                <li>Card buttons: D=Details, pencil=Edit</li>
               </ul>
               <button
                 onClick={() => {

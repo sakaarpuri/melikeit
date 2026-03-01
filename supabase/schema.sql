@@ -25,6 +25,12 @@ create table if not exists public.finds (
 alter table public.finds
 add column if not exists preview_path text;
 
+alter table public.finds
+add column if not exists file_path text,
+add column if not exists file_name text,
+add column if not exists file_mime text,
+add column if not exists file_size_bytes bigint;
+
 create table if not exists public.find_comments (
   id uuid primary key default gen_random_uuid(),
   find_id uuid not null references public.finds (id) on delete cascade,
