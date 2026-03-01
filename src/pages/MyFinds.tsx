@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import FindCard from '../components/FindCard';
 import SectionManager from '../components/SectionManager';
 import CreateFindModal from '../components/CreateFindModal';
@@ -177,6 +178,7 @@ function isMissingColumnError(message: string | undefined, column: string): bool
 
 export default function MyFinds() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [sections, setSections] = useState<Section[]>([]);
   const [finds, setFinds] = useState<Find[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,6 +209,7 @@ export default function MyFinds() {
   const processIncomingFilesRef = useRef<(files: File[]) => void>(() => {});
   const [isGridDragging, setIsGridDragging] = useState(false);
   const gridDragCounterRef = useRef(0);
+  const [friendAuthor, setFriendAuthor] = useState<User | null>(null);
 
   const me: User = useMemo(() => {
     const fullName = user?.user_metadata?.full_name as string | undefined;
@@ -222,6 +225,10 @@ export default function MyFinds() {
       bio: '',
     };
   }, [user]);
+
+  const viewMode = searchParams.get('view');
+  const selectedFriendId = viewMode === 'friends' ? searchParams.get('friend') ?? '' : '';
+  const isFriendsView = !!selectedFriendId;
 
   const mySections = useMemo(() => sections.filter((s) => s.userId === me.id), [sections, me.id]);
   const filtered = useMemo(() => {
@@ -247,6 +254,12 @@ export default function MyFinds() {
     window.localStorage.setItem('melikeit.gridMode', gridMode);
   }, [gridMode]);
 
+  useEffect(() => {
+    if (isFriendsView && activeSection) {
+      setActiveSection(undefined);
+    }
+  }, [isFriendsView, activeSection]);
+
   const resolveSectionName = (sectionId?: string) => (
     sectionId ? mySections.find((section) => section.id === sectionId)?.name : undefined
   );
@@ -266,12 +279,19 @@ export default function MyFinds() {
     const FIND_SELECT_WITH_PREVIEW = 'id,user_id,title,description,url,image_path,preview_path,type,visibility,section_id,created_at,find_likes(user_id)';
     const FIND_SELECT_LEGACY = 'id,user_id,title,description,url,image_path,type,visibility,section_id,created_at,find_likes(user_id)';
 
+    let findsQuery = supabase
+      .from('finds')
+      .select(FIND_SELECT_WITH_FILES)
+      .order('created_at', { ascending: false });
+    if (isFriendsView && selectedFriendId) {
+      findsQuery = findsQuery.eq('user_id', selectedFriendId).eq('visibility', 'all_friends');
+    } else {
+      findsQuery = findsQuery.eq('user_id', user.id);
+    }
+
     const [{ data: sectionRows, error: sectionError }, { data: findRowsRaw, error: findError }] = await Promise.all([
-      supabase.from('sections').select('id,user_id,name,visibility').order('created_at', { ascending: true }),
-      supabase
-        .from('finds')
-        .select(FIND_SELECT_WITH_FILES)
-        .order('created_at', { ascending: false }),
+      supabase.from('sections').select('id,user_id,name,visibility').eq('user_id', user.id).order('created_at', { ascending: true }),
+      findsQuery,
     ]);
 
     if (sectionError) {
@@ -296,16 +316,27 @@ export default function MyFinds() {
       const fallbackSelect = isMissingColumnError(findError.message, 'preview_path')
         ? FIND_SELECT_LEGACY
         : FIND_SELECT_WITH_PREVIEW;
-
-      const { data: fallbackRows, error: fallbackError } = await supabase
+      let fallbackQuery = supabase
         .from('finds')
         .select(fallbackSelect)
         .order('created_at', { ascending: false });
+      if (isFriendsView && selectedFriendId) {
+        fallbackQuery = fallbackQuery.eq('user_id', selectedFriendId).eq('visibility', 'all_friends');
+      } else {
+        fallbackQuery = fallbackQuery.eq('user_id', user.id);
+      }
+      const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
       if (fallbackError && fallbackSelect === FIND_SELECT_WITH_PREVIEW && isMissingColumnError(fallbackError.message, 'preview_path')) {
-        const { data: legacyRows, error: legacyError } = await supabase
+        let legacyQuery = supabase
           .from('finds')
           .select(FIND_SELECT_LEGACY)
           .order('created_at', { ascending: false });
+        if (isFriendsView && selectedFriendId) {
+          legacyQuery = legacyQuery.eq('user_id', selectedFriendId).eq('visibility', 'all_friends');
+        } else {
+          legacyQuery = legacyQuery.eq('user_id', user.id);
+        }
+        const { data: legacyRows, error: legacyError } = await legacyQuery;
         if (legacyError) {
           setError(legacyError.message);
           setLoading(false);
@@ -323,7 +354,7 @@ export default function MyFinds() {
 
     let typedSections = (sectionRows ?? []) as unknown as DbSectionRow[];
     const typedFinds = (effectiveFindRowsRaw ?? []) as unknown as DbFindRow[];
-    if (typedSections.length === 0 && typedFinds.length === 0) {
+    if (!isFriendsView && typedSections.length === 0 && typedFinds.length === 0) {
       const { data: defaultRows, error: defaultError } = await supabase
         .from('sections')
         .insert(
@@ -344,6 +375,29 @@ export default function MyFinds() {
       typedSections = (defaultRows ?? []) as unknown as DbSectionRow[];
     }
     setSections(typedSections.map(mapSection));
+
+    if (isFriendsView && selectedFriendId) {
+      const { data: friendProfile } = await supabase
+        .from('profiles')
+        .select('id,full_name,avatar_url')
+        .eq('id', selectedFriendId)
+        .maybeSingle();
+      setFriendAuthor(
+        friendProfile
+          ? {
+            id: friendProfile.id as string,
+            username: handleFromName(friendProfile.full_name as string),
+            displayName: (friendProfile.full_name as string) || 'Friend',
+            avatarUrl:
+              ((friendProfile.avatar_url as string | null) ?? undefined)
+              ?? `https://api.dicebear.com/7.x/personas/svg?seed=${encodeURIComponent(friendProfile.id as string)}`,
+            bio: '',
+          }
+          : null
+      );
+    } else {
+      setFriendAuthor(null);
+    }
 
     const paths = typedFinds.flatMap((f) => [f.image_path, f.preview_path, f.file_path]).filter((p): p is string => !!p);
     const signedMap = new Map<string, string>();
@@ -370,7 +424,7 @@ export default function MyFinds() {
   useEffect(() => {
     void loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, selectedFriendId, isFriendsView]);
 
   const uploadImage = async (file: File) => {
     if (!user) throw new Error('Not signed in');
@@ -462,7 +516,7 @@ export default function MyFinds() {
         file_mime: args.file?.type ?? null,
         file_size_bytes: args.file?.size ?? null,
         type,
-        visibility: 'all_friends',
+        visibility: 'specific_friends',
         section_id: args.sectionId || null,
       })
       .select(FIND_INSERT_SELECT_WITH_FILES)
@@ -486,7 +540,7 @@ export default function MyFinds() {
         url: trimmedUrl || null,
         image_path: imagePath ?? null,
         type,
-        visibility: 'all_friends' as const,
+        visibility: 'specific_friends' as const,
         section_id: args.sectionId || null,
       };
 
@@ -588,6 +642,7 @@ export default function MyFinds() {
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
+      if (isFriendsView) return;
       const items = Array.from(event.clipboardData?.items ?? []);
       const imageFiles = items
         .filter((item) => item.type.startsWith('image/'))
@@ -602,7 +657,7 @@ export default function MyFinds() {
     return () => {
       window.removeEventListener('paste', onPaste);
     };
-  }, []);
+  }, [isFriendsView]);
 
   const normalizeUrl = (raw: string): string | null => {
     const trimmed = raw.trim();
@@ -686,7 +741,7 @@ export default function MyFinds() {
     }
   };
 
-  const updateFindInState = (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string }) => {
+  const updateFindInState = (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string; visibility?: Visibility }) => {
     setFinds((prev) =>
       prev.map((find) =>
         find.id === findId
@@ -696,6 +751,7 @@ export default function MyFinds() {
             description: patch.description,
             url: patch.url,
             sectionId: patch.sectionId,
+            visibility: patch.visibility ?? find.visibility,
           }
           : find
       )
@@ -763,6 +819,7 @@ export default function MyFinds() {
 
   return (
     <div className="flex gap-6 y2k-surface rounded-2xl p-4 sm:p-6">
+      {!isFriendsView && (
       <div className="hidden md:block w-52 shrink-0">
         <div className="bg-white rounded-xl border-2 border-ink shadow-retro p-4 sticky top-6">
           <div
@@ -785,8 +842,10 @@ export default function MyFinds() {
           />
         </div>
       </div>
+      )}
 
       <div className="flex-1 min-w-0">
+        {!isFriendsView && (
         <div className="flex justify-end mb-6">
           <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full sm:w-auto">
             <div className="w-full sm:w-[320px] bg-white border-2 border-ink rounded-xl shadow-retro p-4">
@@ -896,6 +955,16 @@ export default function MyFinds() {
             </div>
           </div>
         </div>
+        )}
+
+        {isFriendsView && (
+          <div className="mb-6 p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
+            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Friends View</p>
+            <p className="text-sm font-medium text-ink leading-snug">
+              Showing finds shared to friends by {friendAuthor?.displayName ?? 'your friend'}.
+            </p>
+          </div>
+        )}
 
         <div className="mb-6 p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
           <span className="text-2xl shrink-0">:|</span>
@@ -917,7 +986,9 @@ export default function MyFinds() {
         )}
 
         <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-xs font-black text-ink/50 uppercase tracking-widest">{finds.length} finds</p>
+          <p className="text-xs font-black text-ink/50 uppercase tracking-widest">
+            {finds.length} finds{isFriendsView ? ` from ${friendAuthor?.displayName ?? 'friend'}` : ''}
+          </p>
           <div className="flex flex-wrap items-center gap-2 justify-end">
             <button
               type="button"
@@ -957,21 +1028,25 @@ export default function MyFinds() {
         <div className="relative">
           <div
             onDragEnter={(e) => {
+              if (isFriendsView) return;
               e.preventDefault();
               gridDragCounterRef.current += 1;
               setIsGridDragging(true);
             }}
             onDragOver={(e) => {
+              if (isFriendsView) return;
               e.preventDefault();
               setIsGridDragging(true);
             }}
             onDragLeave={(e) => {
+              if (isFriendsView) return;
               e.preventDefault();
               gridDragCounterRef.current = Math.max(0, gridDragCounterRef.current - 1);
               if (gridDragCounterRef.current === 0) setIsGridDragging(false);
             }}
             onDrop={(e) => {
               e.preventDefault();
+              if (isFriendsView) return;
               gridDragCounterRef.current = 0;
               setIsGridDragging(false);
 
@@ -1000,7 +1075,7 @@ export default function MyFinds() {
               <div key={find.id} className="break-inside-avoid mb-6">
                 <FindCard
                   find={find}
-                  author={me}
+                  author={isFriendsView ? (friendAuthor ?? me) : me}
                   sections={mySections}
                   onUpdate={updateFindInState}
                   onDelete={removeFindFromState}
@@ -1009,7 +1084,7 @@ export default function MyFinds() {
             ))}
           </div>
 
-          {isGridDragging && (
+          {!isFriendsView && isGridDragging && (
             <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-dashed border-ink bg-yellow/20 grid place-items-center">
               <div className="bg-white border-2 border-ink shadow-retro px-4 py-3 rounded-xl">
                 <p className="text-xs font-black uppercase tracking-wider text-ink">Drop to add finds (images, links, or files)</p>
@@ -1021,7 +1096,9 @@ export default function MyFinds() {
         {filtered.length === 0 && (
           <div className="text-center py-16 border-2 border-dashed border-ink/30 rounded-xl">
             <p className="font-black text-ink text-lg uppercase">No finds here</p>
-            <p className="text-sm text-ink/60 mt-1">Add a new find and assign it here.</p>
+            <p className="text-sm text-ink/60 mt-1">
+              {isFriendsView ? 'This friend has not shared any finds yet.' : 'Add a new find and assign it here.'}
+            </p>
           </div>
         )}
       </div>

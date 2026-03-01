@@ -23,14 +23,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
+    const syncProfile = (nextSession: Session | null) => {
+      if (!nextSession?.user) return;
+      const fullName =
+        ((nextSession.user.user_metadata?.full_name as string | undefined)?.trim())
+        || ((nextSession.user.user_metadata?.name as string | undefined)?.trim())
+        || ((nextSession.user.email as string | undefined)?.split('@')[0] ?? 'Me');
+      const avatarUrl = (nextSession.user.user_metadata?.avatar_url as string | undefined) ?? null;
+      void (async () => {
+        try {
+          await supabase.from('profiles').upsert(
+            {
+              id: nextSession.user.id,
+              full_name: fullName,
+              avatar_url: avatarUrl,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'id' }
+          );
+        } catch {
+          // Ignore profile sync failures; auth/session flow should still continue.
+        }
+      })();
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setSession(data.session ?? null);
+      syncProfile(data.session ?? null);
       setLoading(false);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      syncProfile(nextSession);
     });
 
     return () => {

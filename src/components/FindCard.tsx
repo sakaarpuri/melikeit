@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FileText, Pencil } from 'lucide-react';
-import type { Find, User, FindType, Section } from '../data/mockData';
+import type { Find, User, FindType, Section, Visibility } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
 import Tooltip from './Tooltip';
@@ -29,7 +29,7 @@ interface FindCardProps {
   find: Find;
   author: User;
   sections?: Section[];
-  onUpdate?: (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string }) => void;
+  onUpdate?: (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string; visibility?: Visibility }) => void;
   onDelete?: (findId: string) => void;
 }
 
@@ -70,6 +70,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   const [editDescription, setEditDescription] = useState(() => find.description);
   const [editUrl, setEditUrl] = useState(() => find.url ?? '');
   const [editSectionId, setEditSectionId] = useState(() => find.sectionId ?? '');
+  const [editVisibility, setEditVisibility] = useState<Visibility>(() => find.visibility);
   const { user } = useAuth();
   const [nowMs, setNowMs] = useState<number>(() => find.createdAt.getTime());
 
@@ -212,6 +213,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                     setEditDescription(find.description);
                     setEditUrl(find.url ?? '');
                     setEditSectionId(find.sectionId ?? '');
+                    setEditVisibility(find.visibility);
                   }}
                   className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
                   aria-label="Edit details"
@@ -266,6 +268,9 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                     </a>
                   </div>
                 )}
+                <p className="text-xs font-bold text-ink/70 uppercase tracking-wider">
+                  Visibility: {find.visibility === 'all_friends' ? 'Friends' : 'Private'}
+                </p>
                 {canEdit && (
                   <div className="pt-1">
                     <button
@@ -277,6 +282,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                         setEditDescription(find.description);
                         setEditUrl(find.url ?? '');
                         setEditSectionId(find.sectionId ?? '');
+                        setEditVisibility(find.visibility);
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
                     >
@@ -320,6 +326,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                       description: nextDescription,
                       url: nextUrl,
                       section_id: editSectionId || null,
+                      visibility: editVisibility,
                     })
                     .eq('id', find.id)
                     .eq('user_id', currentUserId);
@@ -335,6 +342,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                     description: nextDescription,
                     url: nextUrl ?? undefined,
                     sectionId: editSectionId || undefined,
+                    visibility: editVisibility,
                   });
                   setSaveStatus('Saved.');
                   setIsEditing(false);
@@ -371,6 +379,14 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                       {section.name}
                     </option>
                   ))}
+                </select>
+                <select
+                  value={editVisibility}
+                  onChange={(e) => setEditVisibility(e.target.value as Visibility)}
+                  className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink focus:outline-none focus:border-pink"
+                >
+                  <option value="specific_friends">Private</option>
+                  <option value="all_friends">Friends</option>
                 </select>
                 <div className="flex gap-2">
                   <button
