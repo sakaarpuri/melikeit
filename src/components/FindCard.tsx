@@ -89,9 +89,9 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   const youtubeId = getYouTubeVideoId(find.url);
   const videoThumbnailUrl = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : '';
   const linkPreviewUrl = find.url ? `https://s.wordpress.com/mshots/v1/${encodeURIComponent(find.url)}?w=1200&h=800` : '';
-  const isQuickNote = find.type === 'other' && !find.url && !find.imageUrl && !find.fileUrl;
-  const isDocumentFind = !!find.fileUrl && !find.imageUrl;
-  const useGreyFallback = find.type === 'article' || isQuickNote || isDocumentFind;
+  const isFallbackMedia = !find.imageUrl
+    && !(videoThumbnailUrl && erroredVideoThumbUrl !== videoThumbnailUrl)
+    && !(find.url && erroredPreviewUrl !== find.url);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setNowMs(Date.now()), 0);
@@ -118,7 +118,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
         </div>
       </div>
 
-      <div className="relative border-b-2 border-ink bg-black">
+      <div className={`relative border-b-2 border-ink ${isFallbackMedia ? 'bg-[#f2f2f2]' : 'bg-black'}`}>
         {find.imageUrl ? (
           <img
             src={find.imageUrl}
@@ -143,14 +143,13 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           />
         ) : (
           <div
-            className="h-56 w-full grid place-items-center text-white"
+            className="h-56 w-full grid place-items-center text-ink"
             style={{
-              background: useGreyFallback
-                ? 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.38), transparent 34%), linear-gradient(135deg, #f2f2f2 0%, #d9d9d9 55%, #e6e6e6 100%)'
-                : 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(135deg, #2d2d2d 0%, #111 65%, #1a1a1a 100%)',
+              background:
+                'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.38), transparent 34%), linear-gradient(135deg, #f2f2f2 0%, #d9d9d9 55%, #e6e6e6 100%)',
             }}
           >
-            <div className="inline-flex items-center justify-center w-24 h-24 border-2 border-white/90 rounded-lg bg-white/20">
+            <div className="inline-flex items-center justify-center w-24 h-24 border-2 border-ink/80 rounded-lg bg-transparent">
               <FileText size={56} />
             </div>
           </div>
