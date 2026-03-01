@@ -9,6 +9,8 @@ import { getSupabase } from '../supabase/client';
 
 const todaysJoke = JOKES_OF_THE_DAY[new Date().getDate() % JOKES_OF_THE_DAY.length];
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_STORED_IMAGE_BYTES = 1.5 * 1024 * 1024;
+const MAX_STORED_IMAGE_DIMENSION = 1600;
 
 function handleFromName(name?: string): string {
   const raw = (name ?? '').trim().toLowerCase();
@@ -33,12 +35,56 @@ function inferFindType(args: { sectionName?: string; url?: string; mimeType?: st
   return 'other';
 }
 
-function safeExtFromFile(file: File): string {
-  const fromName = file.name.split('.').pop()?.toLowerCase();
-  if (fromName && fromName.length <= 6) return fromName;
-  const fromType = file.type.split('/')[1]?.toLowerCase();
-  if (fromType && fromType.length <= 10) return fromType;
-  return 'bin';
+async function loadImageForCanvas(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read image.'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Could not compress image.'));
+        return;
+      }
+      resolve(blob);
+    }, type, quality);
+  });
+}
+
+async function optimizeImageForUpload(file: File): Promise<File> {
+  const image = await loadImageForCanvas(file);
+  const scale = Math.min(1, MAX_STORED_IMAGE_DIMENSION / Math.max(image.width, image.height));
+  const targetWidth = Math.max(1, Math.round(image.width * scale));
+  const targetHeight = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not process image.');
+  context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+  const qualitySteps = [0.86, 0.76, 0.66, 0.56, 0.46];
+  let bestBlob: Blob | null = null;
+  for (const quality of qualitySteps) {
+    const blob = await canvasToBlob(canvas, 'image/webp', quality);
+    bestBlob = blob;
+    if (blob.size <= MAX_STORED_IMAGE_BYTES) break;
+  }
+  if (!bestBlob) throw new Error('Could not optimize image.');
+  const baseName = (file.name.replace(/\.[^/.]+$/, '') || 'image').slice(0, 60);
+  return new File([bestBlob], `${baseName}.webp`, { type: 'image/webp' });
 }
 
 function isYouTubeUrl(url?: string | null): boolean {
@@ -142,7 +188,9 @@ export default function MyFinds() {
   const [quickNote, setQuickNote] = useState('');
   const [quickNoteSaving, setQuickNoteSaving] = useState(false);
   const [quickNoteSectionId, setQuickNoteSectionId] = useState('');
+  const [intakeStatus, setIntakeStatus] = useState('');
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const processIncomingFilesRef = useRef<(files: File[]) => void>(() => {});
 
   const me: User = useMemo(() => {
     const fullName = user?.user_metadata?.full_name as string | undefined;
@@ -261,11 +309,11 @@ export default function MyFinds() {
     if (!user) throw new Error('Not signed in');
     const supabase = getSupabase();
     if (!supabase) throw new Error('Supabase not configured');
-    const ext = safeExtFromFile(file);
-    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage.from('find_images').upload(path, file, {
+    const optimizedFile = await optimizeImageForUpload(file);
+    const path = `${user.id}/${crypto.randomUUID()}.webp`;
+    const { error: uploadError } = await supabase.storage.from('find_images').upload(path, optimizedFile, {
       upsert: false,
-      contentType: file.type,
+      contentType: 'image/webp',
     });
     if (uploadError) throw uploadError;
     return path;
@@ -352,7 +400,6 @@ export default function MyFinds() {
 
   const createFromUpload = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setDropError('Only image files are supported right now.');
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
@@ -362,6 +409,46 @@ export default function MyFinds() {
     setDropError('');
     await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
   };
+
+  const processIncomingFiles = async (incoming: FileList | File[]) => {
+    const files = Array.from(incoming).filter((file) => file.type.startsWith('image/'));
+    if (files.length === 0) {
+      setDropError('No image files found.');
+      return;
+    }
+    setDropError('');
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      setIntakeStatus(`Processing ${index + 1}/${files.length}: ${file.name}`);
+      await createFromUpload(file);
+    }
+    setIntakeStatus(`Added ${files.length} item${files.length > 1 ? 's' : ''}.`);
+    window.setTimeout(() => {
+      setIntakeStatus('');
+    }, 2000);
+  };
+
+  processIncomingFilesRef.current = (files: File[]) => {
+    void processIncomingFiles(files);
+  };
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const items = Array.from(event.clipboardData?.items ?? []);
+      const imageFiles = items
+        .filter((item) => item.type.startsWith('image/'))
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => !!file);
+      if (imageFiles.length === 0) return;
+      event.preventDefault();
+      processIncomingFilesRef.current(imageFiles);
+    };
+
+    window.addEventListener('paste', onPaste);
+    return () => {
+      window.removeEventListener('paste', onPaste);
+    };
+  }, []);
 
   const submitQuickLink = async () => {
     const raw = quickLink.trim();
@@ -538,11 +625,12 @@ export default function MyFinds() {
             <input
               ref={uploadInputRef}
               type="file"
+              multiple
               accept="image/*"
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void createFromUpload(file);
+                const files = e.target.files;
+                if (files?.length) void processIncomingFiles(files);
                 e.currentTarget.value = '';
               }}
             />
@@ -558,8 +646,8 @@ export default function MyFinds() {
               onDrop={(e) => {
                 e.preventDefault();
                 setIsDragging(false);
-                const file = e.dataTransfer.files?.[0];
-                if (file) void createFromUpload(file);
+                const files = e.dataTransfer.files;
+                if (files?.length) void processIncomingFiles(files);
               }}
               className={`px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-full sm:w-[460px] ${
                 isDragging
@@ -582,6 +670,7 @@ export default function MyFinds() {
               />
             </div>
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
+            {intakeStatus && <p className="text-xs text-ink/70 mt-1 font-bold">{intakeStatus}</p>}
             </div>
           </div>
         </div>
