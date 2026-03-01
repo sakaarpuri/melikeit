@@ -88,6 +88,8 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   const youtubeId = getYouTubeVideoId(find.url);
   const videoThumbnailUrl = youtubeId ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` : '';
   const linkPreviewUrl = find.url ? `https://s.wordpress.com/mshots/v1/${encodeURIComponent(find.url)}?w=1200&h=800` : '';
+  const isQuickNote = find.type === 'other' && !find.url && !find.imageUrl && !find.fileUrl;
+  const useGreyFallback = find.type === 'article' || isQuickNote;
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => setNowMs(Date.now()), 0);
@@ -141,12 +143,13 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           <div
             className="h-56 w-full grid place-items-center text-white"
             style={{
-              background:
-                'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(135deg, #2d2d2d 0%, #111 65%, #1a1a1a 100%)',
+              background: useGreyFallback
+                ? 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.22), transparent 34%), linear-gradient(135deg, #bdbdbd 0%, #8b8b8b 55%, #a3a3a3 100%)'
+                : 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.16), transparent 35%), linear-gradient(135deg, #2d2d2d 0%, #111 65%, #1a1a1a 100%)',
             }}
           >
-            <div className="inline-flex items-center justify-center w-12 h-12 border-2 border-white/80 rounded-lg">
-                <FileText size={20} />
+            <div className="inline-flex items-center justify-center w-16 h-16 border-2 border-white/90 rounded-lg bg-white/10">
+              <FileText size={30} />
             </div>
           </div>
         )}

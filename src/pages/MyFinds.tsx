@@ -11,6 +11,8 @@ const todaysJoke = JOKES_OF_THE_DAY[new Date().getDate() % JOKES_OF_THE_DAY.leng
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_STORED_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const MAX_STORED_IMAGE_DIMENSION = 1600;
+const QUICK_NOTE_NEW_SECTION_OPTION = '__create_new_section__';
+const DEFAULT_SECTION_NAMES = ['Articles', 'Videos', 'Products', 'Places', 'Recipes', 'Notes'];
 
 function handleFromName(name?: string): string {
   const raw = (name ?? '').trim().toLowerCase();
@@ -319,10 +321,30 @@ export default function MyFinds() {
       }
     }
 
-    const typedSections = (sectionRows ?? []) as unknown as DbSectionRow[];
+    let typedSections = (sectionRows ?? []) as unknown as DbSectionRow[];
+    const typedFinds = (effectiveFindRowsRaw ?? []) as unknown as DbFindRow[];
+    if (typedSections.length === 0 && typedFinds.length === 0) {
+      const { data: defaultRows, error: defaultError } = await supabase
+        .from('sections')
+        .insert(
+          DEFAULT_SECTION_NAMES.map((name) => ({
+            user_id: user.id,
+            name,
+            visibility: 'all_friends' as const,
+          }))
+        )
+        .select('id,user_id,name,visibility')
+        .order('created_at', { ascending: true });
+
+      if (defaultError) {
+        setError(defaultError.message);
+        setLoading(false);
+        return;
+      }
+      typedSections = (defaultRows ?? []) as unknown as DbSectionRow[];
+    }
     setSections(typedSections.map(mapSection));
 
-    const typedFinds = (effectiveFindRowsRaw ?? []) as unknown as DbFindRow[];
     const paths = typedFinds.flatMap((f) => [f.image_path, f.preview_path, f.file_path]).filter((p): p is string => !!p);
     const signedMap = new Map<string, string>();
     if (paths.length > 0) {
@@ -684,15 +706,15 @@ export default function MyFinds() {
     setFinds((prev) => prev.filter((find) => find.id !== findId));
   };
 
-  const createSection = async (args: { name: string; visibility: Visibility }) => {
-    if (!user) return;
+  const createSection = async (args: { name: string; visibility: Visibility }): Promise<Section | null> => {
+    if (!user) return null;
     const supabase = getSupabase();
     if (!supabase) {
       setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
-      return;
+      return null;
     }
     const name = args.name.trim();
-    if (!name) return;
+    if (!name) return null;
     const { data, error: insertError } = await supabase
       .from('sections')
       .insert({ user_id: user.id, name, visibility: args.visibility })
@@ -700,9 +722,27 @@ export default function MyFinds() {
       .single();
     if (insertError || !data) {
       setError(insertError?.message ?? 'Could not create section');
+      return null;
+    }
+    const mapped = mapSection(data as unknown as DbSectionRow);
+    setSections((prev) => [...prev, mapped]);
+    return mapped;
+  };
+
+  const renameSection = async (sectionId: string, nextName: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    const name = nextName.trim();
+    if (!name) return;
+    const { error: updateError } = await supabase
+      .from('sections')
+      .update({ name })
+      .eq('id', sectionId);
+    if (updateError) {
+      setError(updateError.message);
       return;
     }
-    setSections((prev) => [...prev, mapSection(data as unknown as DbSectionRow)]);
+    setSections((prev) => prev.map((section) => (section.id === sectionId ? { ...section, name } : section)));
   };
 
   const deleteSection = async (sectionId: string) => {
@@ -740,6 +780,7 @@ export default function MyFinds() {
             onSectionClick={(id) => setActiveSection(id === activeSection ? undefined : id)}
             activeSectionId={activeSection}
             onCreateSection={createSection}
+            onRenameSection={renameSection}
             onDeleteSection={deleteSection}
           />
         </div>
@@ -752,7 +793,22 @@ export default function MyFinds() {
               <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
               <select
                 value={quickNoteSectionId}
-                onChange={(e) => setQuickNoteSectionId(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value !== QUICK_NOTE_NEW_SECTION_OPTION) {
+                    setQuickNoteSectionId(value);
+                    return;
+                  }
+                  const requestedName = window.prompt('New section name');
+                  if (!requestedName?.trim()) {
+                    setQuickNoteSectionId('');
+                    return;
+                  }
+                  void (async () => {
+                    const created = await createSection({ name: requestedName, visibility: 'all_friends' });
+                    if (created) setQuickNoteSectionId(created.id);
+                  })();
+                }}
                 className="w-full mb-2 px-3 py-2 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink focus:outline-none focus:border-pink"
               >
                 <option value="">No section</option>
@@ -761,6 +817,7 @@ export default function MyFinds() {
                     {section.name}
                   </option>
                 ))}
+                <option value={QUICK_NOTE_NEW_SECTION_OPTION}>+ Add new section</option>
               </select>
               <textarea
                 value={quickNote}
