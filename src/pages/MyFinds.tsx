@@ -161,7 +161,16 @@ function mapFind(row: DbFindRow, signedImageUrl?: string, signedFileUrl?: string
 }
 
 function isMissingColumnError(message: string | undefined, column: string): boolean {
-  return !!message && message.toLowerCase().includes(`'${column.toLowerCase()}'`);
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  const col = column.toLowerCase();
+  const escaped = col.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`column\\s+(?:\\w+\\.)?["']?${escaped}["']?\\s+does\\s+not\\s+exist`);
+  return (
+    re.test(normalized)
+    || normalized.includes(`'${col}'`)
+    || normalized.includes(`"${col}"`)
+  );
 }
 
 export default function MyFinds() {
