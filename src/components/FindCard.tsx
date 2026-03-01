@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import type { Find, User, FindType, Section, Visibility } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -56,6 +56,44 @@ function getYouTubeVideoId(url?: string): string | null {
     return null;
   }
   return null;
+}
+
+function inferEmojiFromFile(fileName?: string, fileMime?: string): string {
+  const lowerName = (fileName ?? '').toLowerCase();
+  const lowerMime = (fileMime ?? '').toLowerCase();
+
+  const ext = (() => {
+    const parts = lowerName.split('.');
+    if (parts.length < 2) return '';
+    return parts[parts.length - 1] ?? '';
+  })();
+
+  if (lowerMime.startsWith('image/')) return '🖼️';
+  if (lowerMime.startsWith('video/')) return '🎬';
+  if (lowerMime.startsWith('audio/')) return '🎧';
+  if (lowerMime === 'application/pdf' || ext === 'pdf') return '📕';
+  if (ext === 'doc' || ext === 'docx' || lowerMime.includes('word')) return '📝';
+  if (ext === 'xls' || ext === 'xlsx' || ext === 'csv' || lowerMime.includes('spreadsheet')) return '📊';
+  if (ext === 'ppt' || ext === 'pptx' || lowerMime.includes('presentation')) return '📽️';
+  if (ext === 'zip' || ext === 'rar' || ext === '7z' || lowerMime.includes('zip')) return '🧳';
+  if (ext === 'txt' || ext === 'md' || lowerMime.startsWith('text/')) return '📜';
+  if (ext === 'json' || ext === 'yaml' || ext === 'yml' || ext === 'xml') return '🤖';
+  return '📦';
+}
+
+function pickFallbackEmoji(find: Find): string {
+  if (find.fileName || find.fileMime) return inferEmojiFromFile(find.fileName, find.fileMime);
+  if (find.url) {
+    if (find.type === 'article') return '📰';
+    if (find.type === 'video') return '📺';
+    if (find.type === 'music') return '🎵';
+    if (find.type === 'recipe') return '🍜';
+    if (find.type === 'place') return '📍';
+    if (find.type === 'product') return '🛍️';
+    return '🔗';
+  }
+  if (find.description) return '🗒️';
+  return '✨';
 }
 
 export default function FindCard({ find, author, sections = [], onUpdate, onDelete }: FindCardProps) {
@@ -150,7 +188,10 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
             }}
           >
             <div className="inline-flex items-center justify-center w-24 h-24 border-2 border-ink/80 rounded-lg bg-transparent">
-              <FileText size={56} />
+              <span className="text-6xl leading-none select-none" aria-hidden="true">
+                {pickFallbackEmoji(find)}
+              </span>
+              <span className="sr-only">No preview available</span>
             </div>
           </div>
         )}
