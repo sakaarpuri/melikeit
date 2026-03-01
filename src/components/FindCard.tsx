@@ -202,6 +202,26 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
             >
               D
             </button>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setShowDetails(true);
+                  setIsEditing(true);
+                  setSaveStatus('');
+                  setSaveError('');
+                  setEditTitle(find.title);
+                  setEditDescription(find.description);
+                  setEditUrl(find.url ?? '');
+                  setEditSectionId(find.sectionId ?? '');
+                }}
+                className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
+                aria-label="Edit details"
+                title="Edit details"
+              >
+                <Pencil size={12} />
+                Edit
+              </button>
+            )}
             <button
               onClick={() => setShowComments(!showComments)}
               className="px-2 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
