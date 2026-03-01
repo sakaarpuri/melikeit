@@ -24,3 +24,28 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+/* Early-2000s inspired "desktop web" background for the My Finds surface. */
+.y2k-surface {
+  position: relative;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 201, 212, 0.22), transparent 42%),
+    radial-gradient(circle at 78% 28%, rgba(255, 77, 158, 0.18), transparent 45%),
+    radial-gradient(circle at 30% 82%, rgba(255, 229, 0, 0.22), transparent 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.25)),
+    repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.05) 0, rgba(17, 17, 17, 0.05) 1px, transparent 1px, transparent 10px),
+    repeating-linear-gradient(0deg, rgba(17, 17, 17, 0.04) 0, rgba(17, 17, 17, 0.04) 1px, transparent 1px, transparent 10px);
+  border: 2px solid #111111;
+  box-shadow: 6px 6px 0 #111111;
+}
+
+.y2k-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0.08) 2px, transparent 2px, transparent 6px);
+  opacity: 0.55;
+  mix-blend-mode: overlay;
+}

@@ -553,8 +553,8 @@ export default function MyFinds() {
   }
 
   return (
-    <div className="flex gap-6">
-      <div className="hidden md:block w-52 shrink-0 pt-28">
+    <div className="flex gap-6 y2k-surface rounded-2xl p-4 sm:p-6">
+      <div className="hidden md:block w-52 shrink-0">
         <div className="bg-white rounded-xl border-2 border-ink shadow-retro p-4 sticky top-6">
           <div
             className={`px-2.5 py-2 rounded-lg cursor-pointer mb-2 text-sm font-black border-2 transition-all ${
@@ -577,14 +577,6 @@ export default function MyFinds() {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="mb-6 p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
-          <span className="text-2xl shrink-0">:|</span>
-          <div>
-            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
-            <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
-          </div>
-        </div>
-
         <div className="flex justify-end mb-6">
           <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full sm:w-auto">
             <div className="w-full sm:w-[320px] bg-white border-2 border-ink rounded-xl shadow-retro p-4">
@@ -677,6 +669,14 @@ export default function MyFinds() {
             {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
             {intakeStatus && <p className="text-xs text-ink/70 mt-1 font-bold">{intakeStatus}</p>}
             </div>
+          </div>
+        </div>
+
+        <div className="mb-6 p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
+          <span className="text-2xl shrink-0">:|</span>
+          <div>
+            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
+            <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
           </div>
         </div>
 
