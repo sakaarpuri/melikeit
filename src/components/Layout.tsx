@@ -18,6 +18,8 @@ export default function Layout() {
   const [friendsStatus, setFriendsStatus] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const [inviteCreating, setInviteCreating] = useState(false);
+  const [connectInput, setConnectInput] = useState('');
+  const [connectBusy, setConnectBusy] = useState(false);
   const [invitePrompt, setInvitePrompt] = useState<{ token: string; fromName: string; fromAvatarUrl?: string } | null>(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteStatus, setInviteStatus] = useState('');
@@ -180,6 +182,43 @@ export default function Layout() {
     } catch {
       setFriendsStatus('Could not copy link automatically.');
     }
+  };
+
+  const extractInviteToken = (raw: string): string => {
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
+    try {
+      const parsed = new URL(trimmed);
+      const paramToken = parsed.searchParams.get('friendInvite')?.trim();
+      if (paramToken) return paramToken;
+    } catch {
+      const match = trimmed.match(/[?&]friendInvite=([^&\s]+)/i);
+      if (match?.[1]) return decodeURIComponent(match[1]).trim();
+    }
+    return trimmed;
+  };
+
+  const connectWithCode = async () => {
+    const token = extractInviteToken(connectInput);
+    if (!token || connectBusy) {
+      if (!token) setFriendsStatus('Paste an invite link or code.');
+      return;
+    }
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    setConnectBusy(true);
+    setFriendsStatus('');
+    const { error } = await supabase.rpc('accept_friend_invite', { p_token: token });
+    setConnectBusy(false);
+    if (error) {
+      setFriendsStatus(error.message);
+      return;
+    }
+
+    setConnectInput('');
+    setFriendsStatus('Friend connected.');
+    void loadFriends();
   };
 
   const openFriendFinds = (friendId: string) => {
@@ -538,6 +577,24 @@ export default function Layout() {
                   </button>
                 </div>
               )}
+              <div className="border-2 border-ink rounded-lg p-3 bg-white space-y-2">
+                <p className="text-[11px] font-black text-ink uppercase tracking-wide">Connect with code</p>
+                <div className="flex gap-2">
+                  <input
+                    value={connectInput}
+                    onChange={(event) => setConnectInput(event.target.value)}
+                    placeholder="Paste invite link or code"
+                    className="flex-1 px-2 py-2 rounded-lg border-2 border-ink bg-white text-[11px] font-bold text-ink"
+                  />
+                  <button
+                    onClick={() => void connectWithCode()}
+                    disabled={connectBusy}
+                    className="px-3 py-2 rounded-lg border-2 border-ink bg-yellow text-xs font-black text-ink"
+                  >
+                    {connectBusy ? 'Connecting...' : 'Connect'}
+                  </button>
+                </div>
+              </div>
               <div className="border-2 border-ink rounded-lg max-h-72 overflow-y-auto">
                 {friendsLoading ? (
                   <p className="text-xs font-bold text-ink/70 p-3">Loading friends...</p>
