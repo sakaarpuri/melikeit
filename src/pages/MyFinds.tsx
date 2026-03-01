@@ -168,6 +168,7 @@ export default function MyFinds() {
   const [finds, setFinds] = useState<Find[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
 
   const [sortMode, setSortMode] = useState<'newest' | 'oldest' | 'most_liked'>(() => {
     const raw = window.localStorage.getItem('melikeit.sortMode');
@@ -191,6 +192,8 @@ export default function MyFinds() {
   const [intakeStatus, setIntakeStatus] = useState('');
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const processIncomingFilesRef = useRef<(files: File[]) => void>(() => {});
+  const [isGridDragging, setIsGridDragging] = useState(false);
+  const gridDragCounterRef = useRef(0);
 
   const me: User = useMemo(() => {
     const fullName = user?.user_metadata?.full_name as string | undefined;
@@ -455,24 +458,66 @@ export default function MyFinds() {
     };
   }, []);
 
+  const normalizeUrl = (raw: string): string | null => {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      return new URL(withProtocol).toString();
+    } catch {
+      return null;
+    }
+  };
+
+  const submitUrl = async (raw: string) => {
+    const url = normalizeUrl(raw);
+    if (!url) {
+      setDropError('Please paste a valid link.');
+      return;
+    }
+    setDropError('');
+    await createFind({
+      title: url,
+      description: '',
+      url,
+      sectionId: activeSection ?? '',
+    });
+  };
+
+  const extractFirstUrlFromDataTransfer = (dt: DataTransfer): string | null => {
+    const candidates: string[] = [];
+    const uriList = dt.getData('text/uri-list');
+    if (uriList) candidates.push(...uriList.split('\n').map((line) => line.trim()).filter(Boolean));
+    const plain = dt.getData('text/plain');
+    if (plain) candidates.push(...plain.split(/\s+/g).map((token) => token.trim()).filter(Boolean));
+
+    for (const candidate of candidates) {
+      if (candidate.startsWith('#')) continue;
+      const normalized = normalizeUrl(candidate);
+      if (normalized) return normalized;
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const seen = window.localStorage.getItem('melikeit.helpSeen');
+    if (seen !== '1') setShowHelp(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showHelp) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowHelp(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showHelp]);
+
   const submitQuickLink = async () => {
     const raw = quickLink.trim();
     if (!raw) return;
-    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    try {
-      const parsed = new URL(withProtocol);
-      const url = parsed.toString();
-      setDropError('');
-      await createFind({
-        title: url,
-        description: '',
-        url,
-        sectionId: activeSection ?? '',
-      });
-      setQuickLink('');
-    } catch {
-      setDropError('Please paste a valid link.');
-    }
+    await submitUrl(raw);
+    setQuickLink('');
   };
 
   const submitQuickNote = async () => {
@@ -694,6 +739,15 @@ export default function MyFinds() {
         <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-xs font-black text-ink/50 uppercase tracking-widest">{finds.length} finds</p>
           <div className="flex flex-wrap items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowHelp(true)}
+              className="px-2.5 py-2 rounded-lg border-2 border-ink bg-yellow text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
+              aria-label="Help"
+              title="Help"
+            >
+              ? Help
+            </button>
             <label className="text-[11px] font-black uppercase tracking-wider text-ink/60">Sort</label>
             <select
               value={sortMode}
@@ -720,26 +774,66 @@ export default function MyFinds() {
           </div>
         </div>
 
-        <div
-          className={`gap-6 ${
-            gridMode === 'compact'
-              ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4'
-              : gridMode === 'cozy'
-                ? 'columns-1 md:columns-2 xl:columns-3'
-                : 'columns-1 sm:columns-2 xl:columns-3'
-          } mt-8`}
-        >
-          {filtered.map((find) => (
-            <div key={find.id} className="break-inside-avoid mb-6">
-              <FindCard
-                find={find}
-                author={me}
-                sections={mySections}
-                onUpdate={updateFindInState}
-                onDelete={removeFindFromState}
-              />
+        <div className="relative">
+          <div
+            onDragEnter={(e) => {
+              e.preventDefault();
+              gridDragCounterRef.current += 1;
+              setIsGridDragging(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsGridDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              gridDragCounterRef.current = Math.max(0, gridDragCounterRef.current - 1);
+              if (gridDragCounterRef.current === 0) setIsGridDragging(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              gridDragCounterRef.current = 0;
+              setIsGridDragging(false);
+
+              const files = e.dataTransfer.files;
+              if (files?.length) {
+                void processIncomingFiles(files);
+                return;
+              }
+
+              const url = extractFirstUrlFromDataTransfer(e.dataTransfer);
+              if (url) {
+                void submitUrl(url);
+              }
+            }}
+            className={`gap-6 ${
+              gridMode === 'compact'
+                ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4'
+                : gridMode === 'cozy'
+                  ? 'columns-1 md:columns-2 xl:columns-3'
+                  : 'columns-1 sm:columns-2 xl:columns-3'
+            } mt-8 ${isGridDragging ? 'outline outline-2 outline-dashed outline-ink/70 outline-offset-4' : ''}`}
+          >
+            {filtered.map((find) => (
+              <div key={find.id} className="break-inside-avoid mb-6">
+                <FindCard
+                  find={find}
+                  author={me}
+                  sections={mySections}
+                  onUpdate={updateFindInState}
+                  onDelete={removeFindFromState}
+                />
+              </div>
+            ))}
+          </div>
+
+          {isGridDragging && (
+            <div className="pointer-events-none absolute inset-0 rounded-xl border-2 border-dashed border-ink bg-yellow/20 grid place-items-center">
+              <div className="bg-white border-2 border-ink shadow-retro px-4 py-3 rounded-xl">
+                <p className="text-xs font-black uppercase tracking-wider text-ink">Drop to add finds (images or links)</p>
+              </div>
             </div>
-          ))}
+          )}
         </div>
 
         {filtered.length === 0 && (
@@ -756,6 +850,41 @@ export default function MyFinds() {
           onClose={() => setShowModal(false)}
           onSubmit={(data) => void createFind(data)}
         />
+      )}
+
+      {showHelp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-ink/50" onClick={() => setShowHelp(false)} />
+          <div className="relative w-full max-w-lg bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
+            <div className="px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
+              <h2 className="text-sm font-black text-ink uppercase tracking-wide">Add finds fast</h2>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="px-2 py-1 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-5 space-y-3 text-sm text-ink/80">
+              <ul className="list-disc pl-5 space-y-2 text-sm font-medium">
+                <li>Drop screenshots anywhere on the grid</li>
+                <li>Paste screenshot: Cmd/Ctrl+V</li>
+                <li>Type/paste a link in +Add Finds and press Enter</li>
+                <li>Quick note: Cmd/Ctrl+Enter</li>
+                <li>Card buttons: D=Details, C=Comments, L=Likes, pencil=Edit</li>
+              </ul>
+              <button
+                onClick={() => {
+                  window.localStorage.setItem('melikeit.helpSeen', '1');
+                  setShowHelp(false);
+                }}
+                className="w-full mt-2 px-4 py-3 rounded-xl border-2 border-ink bg-pink text-ink font-black shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

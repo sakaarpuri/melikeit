@@ -3,6 +3,7 @@ import { FileText, Pencil } from 'lucide-react';
 import type { Find, User, FindType, Section } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
+import Tooltip from './Tooltip';
 
 const TYPE_DOT: Record<FindType, string> = {
   article: '#FF4D9E',
@@ -194,59 +195,73 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           </div>
 
           <div className="flex gap-1.5 shrink-0">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className={`px-2 py-1 border-2 border-ink text-[11px] font-black uppercase tracking-wider ${
-                showDetails ? 'bg-cyan text-ink' : 'bg-white text-ink'
-              }`}
-            >
-              D
-            </button>
-            {canEdit && (
+            <Tooltip label="Details">
               <button
-                onClick={() => {
-                  setShowDetails(true);
-                  setIsEditing(true);
-                  setSaveStatus('');
-                  setSaveError('');
-                  setEditTitle(find.title);
-                  setEditDescription(find.description);
-                  setEditUrl(find.url ?? '');
-                  setEditSectionId(find.sectionId ?? '');
-                }}
-                className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
-                aria-label="Edit details"
-                title="Edit details"
+                onClick={() => setShowDetails(!showDetails)}
+                className={`px-2 py-1 border-2 border-ink text-[11px] font-black uppercase tracking-wider ${
+                  showDetails ? 'bg-cyan text-ink' : 'bg-white text-ink'
+                }`}
+                aria-label="Details"
+                title="Details"
               >
-                <Pencil size={12} />
-                Edit
+                D
               </button>
+            </Tooltip>
+            {canEdit && (
+              <Tooltip label="Edit details">
+                <button
+                  onClick={() => {
+                    setShowDetails(true);
+                    setIsEditing(true);
+                    setSaveStatus('');
+                    setSaveError('');
+                    setEditTitle(find.title);
+                    setEditDescription(find.description);
+                    setEditUrl(find.url ?? '');
+                    setEditSectionId(find.sectionId ?? '');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
+                  aria-label="Edit details"
+                  title="Edit details"
+                >
+                  <Pencil size={12} />
+                  Edit
+                </button>
+              </Tooltip>
             )}
-            <button
-              onClick={() => setShowComments(!showComments)}
-              className="px-2 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
-            >
-              C {comments.length}
-            </button>
-            <button
-              onClick={async () => {
-                if (!currentUserId) return;
-                const supabase = getSupabase();
-                if (!supabase) return;
-                if (liked) {
-                  setLikes((prev) => prev.filter((id) => id !== currentUserId));
-                  await supabase.from('find_likes').delete().eq('find_id', find.id).eq('user_id', currentUserId);
-                } else {
-                  setLikes((prev) => [...prev, currentUserId]);
-                  await supabase.from('find_likes').insert({ find_id: find.id, user_id: currentUserId });
-                }
-              }}
-              className={`px-2 py-1 border-2 border-ink text-[11px] font-black uppercase tracking-wider ${
-                liked ? 'bg-pink text-ink' : 'bg-white text-ink'
-              }`}
-            >
-              L {likes.length}
-            </button>
+            <Tooltip label="Comments">
+              <button
+                onClick={() => setShowComments(!showComments)}
+                className="px-2 py-1 border-2 border-ink bg-white text-[11px] font-black uppercase tracking-wider text-ink"
+                aria-label="Comments"
+                title="Comments"
+              >
+                C {comments.length}
+              </button>
+            </Tooltip>
+            <Tooltip label="Likes">
+              <button
+                onClick={async () => {
+                  if (!currentUserId) return;
+                  const supabase = getSupabase();
+                  if (!supabase) return;
+                  if (liked) {
+                    setLikes((prev) => prev.filter((id) => id !== currentUserId));
+                    await supabase.from('find_likes').delete().eq('find_id', find.id).eq('user_id', currentUserId);
+                  } else {
+                    setLikes((prev) => [...prev, currentUserId]);
+                    await supabase.from('find_likes').insert({ find_id: find.id, user_id: currentUserId });
+                  }
+                }}
+                className={`px-2 py-1 border-2 border-ink text-[11px] font-black uppercase tracking-wider ${
+                  liked ? 'bg-pink text-ink' : 'bg-white text-ink'
+                }`}
+                aria-label="Likes"
+                title="Likes"
+              >
+                L {likes.length}
+              </button>
+            </Tooltip>
           </div>
         </div>
 
