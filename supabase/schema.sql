@@ -208,10 +208,10 @@ set search_path = public
 as $$
 declare
   invite_row public.friend_invites%rowtype;
-  current_user uuid;
+  current_user_id uuid;
 begin
-  current_user := auth.uid();
-  if current_user is null then
+  current_user_id := auth.uid();
+  if current_user_id is null then
     raise exception 'Not authenticated';
   end if;
 
@@ -227,22 +227,22 @@ begin
     raise exception 'Invite is invalid or expired';
   end if;
 
-  if invite_row.from_user_id = current_user then
+  if invite_row.from_user_id = current_user_id then
     raise exception 'Cannot accept your own invite';
   end if;
 
   update public.friend_invites
   set status = 'accepted',
-      accepted_by = current_user,
+      accepted_by = current_user_id,
       accepted_at = now()
   where token = invite_row.token;
 
   insert into public.friendships (user_id, friend_id)
-  values (current_user, invite_row.from_user_id)
+  values (current_user_id, invite_row.from_user_id)
   on conflict do nothing;
 
   insert into public.friendships (user_id, friend_id)
-  values (invite_row.from_user_id, current_user)
+  values (invite_row.from_user_id, current_user_id)
   on conflict do nothing;
 end;
 $$;
