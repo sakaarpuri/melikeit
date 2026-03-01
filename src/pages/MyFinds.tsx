@@ -332,26 +332,31 @@ export default function MyFinds() {
       imagePath = await uploadImage(args.imageFile);
     }
     let previewPath: string | undefined;
+    let previewTitle: string | undefined;
+    let previewDescription: string | undefined;
     const trimmedUrl = args.url?.trim();
     if (!imagePath && trimmedUrl && !isYouTubeUrl(trimmedUrl)) {
-      const { data, error: previewError } = await supabase.functions.invoke<{ previewPath: string }>('link-preview', {
+      const { data, error: previewError } = await supabase.functions.invoke<{ previewPath: string; title?: string; description?: string }>('link-preview', {
         body: { url: trimmedUrl },
       });
       if (!previewError && data?.previewPath) {
         previewPath = data.previewPath;
+        previewTitle = data.title?.trim() || undefined;
+        previewDescription = data.description?.trim() || undefined;
       }
     }
 
-    const title = args.title.trim() || trimmedUrl || (args.imageFile ? args.imageFile.name : '') || 'Untitled find';
+    const title = args.title.trim() || previewTitle || trimmedUrl || (args.imageFile ? args.imageFile.name : '') || 'Untitled find';
     const sectionName = resolveSectionName(args.sectionId);
     const type = inferFindType({ sectionName, url: args.url, mimeType: args.imageFile?.type });
+    const description = (args.description ?? '').trim() || previewDescription || '';
 
     const { data, error: insertError } = await supabase
       .from('finds')
       .insert({
         user_id: user.id,
         title,
-        description: args.description ?? '',
+        description,
         url: trimmedUrl || null,
         image_path: imagePath ?? null,
         preview_path: previewPath ?? null,

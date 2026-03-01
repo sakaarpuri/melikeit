@@ -24,6 +24,11 @@ function extractMetaContent(html: string, keys: string[]): string | null {
   return null;
 }
 
+function extractTitleTag(html: string): string | null {
+  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return match?.[1]?.trim() ?? null;
+}
+
 function extFromContentType(contentType: string): string {
   const normalized = contentType.toLowerCase().split(';')[0]?.trim();
   if (normalized === 'image/jpeg') return 'jpg';
@@ -33,7 +38,7 @@ function extFromContentType(contentType: string): string {
   return 'bin';
 }
 
-async function fetchOgImageUrl(pageUrl: URL): Promise<URL | null> {
+async function fetchPageHtml(pageUrl: URL): Promise<{ html: string; resolvedUrl: string } | null> {
   const response = await fetch(pageUrl.toString(), {
     redirect: 'follow',
     headers: {
@@ -45,15 +50,14 @@ async function fetchOgImageUrl(pageUrl: URL): Promise<URL | null> {
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().includes('text/html')) return null;
   const html = await response.text();
-  const found = extractMetaContent(html, ['og:image', 'twitter:image', 'twitter:image:src']);
-  if (!found) return null;
-  try {
-    const absolute = new URL(found, response.url);
-    if (!/^https?:$/i.test(absolute.protocol)) return null;
-    return absolute;
-  } catch {
-    return null;
-  }
+  return { html, resolvedUrl: response.url };
+}
+
+function extractPageMetadata(html: string): { title?: string; description?: string; imageUrl?: string } {
+  const title = extractMetaContent(html, ['og:title', 'twitter:title']) ?? extractTitleTag(html) ?? undefined;
+  const description = extractMetaContent(html, ['og:description', 'twitter:description', 'description']) ?? undefined;
+  const imageUrl = extractMetaContent(html, ['og:image', 'twitter:image', 'twitter:image:src']) ?? undefined;
+  return { title, description, imageUrl };
 }
 
 Deno.serve(async (req) => {
@@ -120,7 +124,20 @@ Deno.serve(async (req) => {
     }
 
     const screenshotUrl = `https://s.wordpress.com/mshots/v1/${encodeURIComponent(parsedUrl.toString())}?w=1200&h=800`;
-    const ogImageUrl = await fetchOgImageUrl(parsedUrl);
+    const page = await fetchPageHtml(parsedUrl);
+    const meta = page ? extractPageMetadata(page.html) : {};
+    const ogImageRaw = meta.imageUrl;
+    const ogImageUrl = ogImageRaw && page
+      ? (() => {
+        try {
+          const absolute = new URL(ogImageRaw, page.resolvedUrl);
+          if (!/^https?:$/i.test(absolute.protocol)) return null;
+          return absolute;
+        } catch {
+          return null;
+        }
+      })()
+      : null;
 
     let imageResponse: Response | null = null;
     let outputExt = 'jpg';
@@ -178,7 +195,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ previewPath }), {
+    return new Response(JSON.stringify({ previewPath, title: meta.title, description: meta.description }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
