@@ -4,6 +4,51 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --page-bg: 245 245 245;
+  --paper: 255 255 255;
+  --surface: 240 240 240;
+  --chrome: 248 248 248;
+  --ink: 17 17 17;
+
+  --pink: 255 77 158;
+  --pink-dark: 217 53 133;
+  --cyan: 0 201 212;
+  --cyan-dark: 0 168 178;
+  --yellow: 255 229 0;
+  --yellow-dark: 230 206 0;
+}
+
+html[data-theme="plain"] {
+  --page-bg: 248 248 248;
+  --paper: 255 255 255;
+  --surface: 242 242 242;
+  --chrome: 248 248 248;
+  --ink: 17 17 17;
+
+  --pink: 17 17 17;
+  --pink-dark: 17 17 17;
+  --cyan: 17 17 17;
+  --cyan-dark: 17 17 17;
+  --yellow: 242 242 242;
+  --yellow-dark: 230 230 230;
+}
+
+html[data-theme="stealth"] {
+  --page-bg: 10 10 12;
+  --paper: 18 18 22;
+  --surface: 26 26 32;
+  --chrome: 22 22 28;
+  --ink: 236 236 236;
+
+  --pink: 190 76 128;
+  --pink-dark: 170 60 110;
+  --cyan: 0 170 180;
+  --cyan-dark: 0 140 150;
+  --yellow: 190 170 0;
+  --yellow-dark: 165 145 0;
+}
+
 html {
   font-size: 18px;
 }
@@ -14,8 +59,8 @@ html {
 
 body {
   margin: 0;
-  background-color: #F5F5F5;
-  color: #111111;
+  background-color: rgb(var(--page-bg));
+  color: rgb(var(--ink));
   font-family: 'Inter', system-ui, sans-serif;
   min-height: 100vh;
 }
@@ -38,6 +83,41 @@ a {
   border: 2px solid #111111;
   box-shadow: 6px 6px 0 #111111;
 }
+
+html[data-theme="plain"] .y2k-surface {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 0, 0, 0.06), transparent 42%),
+    radial-gradient(circle at 78% 28%, rgba(0, 0, 0, 0.05), transparent 45%),
+    radial-gradient(circle at 30% 82%, rgba(0, 0, 0, 0.06), transparent 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.25)),
+    repeating-linear-gradient(90deg, rgba(17, 17, 17, 0.06) 0, rgba(17, 17, 17, 0.06) 1px, transparent 1px, transparent 10px),
+    repeating-linear-gradient(0deg, rgba(17, 17, 17, 0.05) 0, rgba(17, 17, 17, 0.05) 1px, transparent 1px, transparent 10px);
+}
+
+html[data-theme="stealth"] .y2k-surface {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(0, 170, 180, 0.18), transparent 42%),
+    radial-gradient(circle at 78% 28%, rgba(190, 76, 128, 0.16), transparent 45%),
+    radial-gradient(circle at 30% 82%, rgba(190, 170, 0, 0.12), transparent 50%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15)),
+    repeating-linear-gradient(90deg, rgba(236, 236, 236, 0.08) 0, rgba(236, 236, 236, 0.08) 1px, transparent 1px, transparent 10px),
+    repeating-linear-gradient(0deg, rgba(236, 236, 236, 0.06) 0, rgba(236, 236, 236, 0.06) 1px, transparent 1px, transparent 10px);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.65);
+}
+
+html[data-theme="stealth"] .y2k-surface::before {
+  mix-blend-mode: normal;
+  opacity: 0.25;
+}
+
+/* Theme overrides for common Tailwind hard-coded colors. */
+html[data-theme="stealth"] .bg-white { background-color: rgb(var(--paper)) !important; }
+html[data-theme="stealth"] .bg-black { background-color: rgb(0 0 0) !important; }
+
+html[data-theme="stealth"] .bg-\[\#f0f0f0\] { background-color: rgb(var(--surface)) !important; }
+html[data-theme="stealth"] .bg-\[\#efefef\] { background-color: rgb(var(--surface)) !important; }
+html[data-theme="stealth"] .bg-\[\#f8f8f8\] { background-color: rgb(var(--chrome)) !important; }
+html[data-theme="stealth"] .bg-\[\#ececec\] { background-color: rgb(var(--chrome)) !important; }
 
 .y2k-surface::before {
   content: '';

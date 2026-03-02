@@ -8,11 +8,18 @@ function isStrongEnoughPassword(password: string): boolean {
   return /^(?=.{6,})(?=.*(\d|[^A-Za-z0-9])).*$/.test(password);
 }
 
+type ThemeMode = 'default' | 'plain' | 'stealth';
+
 export default function Layout() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    const raw = window.localStorage.getItem('melikeit.theme');
+    if (raw === 'plain' || raw === 'stealth' || raw === 'default') return raw;
+    return 'default';
+  });
   const [friends, setFriends] = useState<Array<{ id: string; fullName: string; avatarUrl?: string }>>([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendsStatus, setFriendsStatus] = useState('');
@@ -40,6 +47,15 @@ export default function Layout() {
     [friends, selectedFriendId]
   );
   const closeMobileNav = () => setMobileNavOpen(false);
+
+  useEffect(() => {
+    if (themeMode === 'default') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', themeMode);
+    }
+    window.localStorage.setItem('melikeit.theme', themeMode);
+  }, [themeMode]);
 
   const clearInviteParam = () => {
     const next = new URLSearchParams(searchParams);
@@ -414,9 +430,21 @@ export default function Layout() {
           )}
           <div className="min-w-0 flex-1 text-left">
             <p className="text-xs font-bold text-ink truncate">{displayName}</p>
-            <p className="text-[10px] text-ink/60 font-medium">User settings</p>
           </div>
         </button>
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] font-black uppercase tracking-wider text-ink/60 shrink-0">Mode</label>
+          <select
+            value={themeMode}
+            onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
+            className="flex-1 px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-[11px] font-black text-ink"
+            aria-label="Theme mode"
+          >
+            <option value="default">Default</option>
+            <option value="plain">Plain</option>
+            <option value="stealth">Stealth</option>
+          </select>
+        </div>
         <button
           onClick={() => getSupabase()?.auth.signOut()}
           className="w-full -mt-2 relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"

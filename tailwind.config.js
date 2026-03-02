@@ -8,27 +8,27 @@ export default {
     extend: {
       colors: {
         pink: {
-          DEFAULT: '#FF4D9E',
-          dark: '#d93585',
+          DEFAULT: 'rgb(var(--pink) / <alpha-value>)',
+          dark: 'rgb(var(--pink-dark) / <alpha-value>)',
         },
         cyan: {
-          DEFAULT: '#00C9D4',
-          dark: '#00a8b2',
+          DEFAULT: 'rgb(var(--cyan) / <alpha-value>)',
+          dark: 'rgb(var(--cyan-dark) / <alpha-value>)',
         },
         yellow: {
-          DEFAULT: '#FFE500',
-          dark: '#e6ce00',
+          DEFAULT: 'rgb(var(--yellow) / <alpha-value>)',
+          dark: 'rgb(var(--yellow-dark) / <alpha-value>)',
         },
-        ink: '#111111',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        retro: '3px 3px 0px #111111',
-        'retro-lg': '5px 5px 0px #111111',
-        'retro-pink': '3px 3px 0px #FF4D9E',
-        'retro-cyan': '3px 3px 0px #00C9D4',
+        retro: '3px 3px 0px rgb(var(--ink))',
+        'retro-lg': '5px 5px 0px rgb(var(--ink))',
+        'retro-pink': '3px 3px 0px rgb(var(--pink))',
+        'retro-cyan': '3px 3px 0px rgb(var(--cyan))',
       },
     },
   },
