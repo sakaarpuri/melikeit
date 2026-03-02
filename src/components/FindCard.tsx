@@ -141,8 +141,8 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   }, []);
 
   return (
-    <div className="border-2 border-ink bg-white/80 backdrop-blur-[1px] shadow-retro overflow-hidden">
-      <div className="bg-white/70 border-b-2 border-ink px-3 py-2 flex items-center gap-2 select-none">
+    <div className="border-2 border-ink bg-[#f0f0f0] shadow-retro overflow-hidden">
+      <div className="bg-[#f8f8f8] border-b-2 border-ink px-3 py-2 flex items-center gap-2 select-none">
         <div className="w-4 h-4 border border-ink/20 shrink-0" style={{ backgroundColor: dot }} />
         <span className="text-[11px] font-bold uppercase tracking-wider text-ink truncate max-w-[42%]">
           {displayTitle}
@@ -151,7 +151,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           className="flex-1 h-[10px] border-y border-ink/80"
           style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent 1px, #111 1px, #111 2px)' }}
         />
-        <div className="w-6 h-6 border-2 border-ink bg-white grid place-items-center">
+        <div className="w-6 h-6 border-2 border-ink bg-[#ececec] grid place-items-center">
           <div className="w-2.5 h-2.5 border border-ink/80" />
         </div>
       </div>
@@ -208,7 +208,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
         )}
       </div>
 
-      <div className="bg-white/70 p-3">
+      <div className="bg-[#efefef] p-3">
         <div className="flex items-center justify-between mb-2 text-[11px] font-bold uppercase tracking-wider text-ink/80">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 border border-ink/30" style={{ backgroundColor: dot }} />

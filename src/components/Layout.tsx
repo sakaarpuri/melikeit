@@ -472,8 +472,10 @@ export default function Layout() {
         </button>
       </header>
 
-      <aside className="hidden md:flex w-60 shrink-0 fixed top-0 left-0 h-screen border-r-2 border-ink bg-yellow/70 backdrop-blur-[1px] flex-col z-40">
-        {sidebarContent}
+      <aside className="hidden md:flex w-72 shrink-0 fixed top-4 left-4 h-[calc(100vh-2rem)] z-40 pointer-events-none">
+        <div className="w-full h-full retro-panel-yellow rounded-2xl overflow-hidden flex flex-col pointer-events-auto">
+          {sidebarContent}
+        </div>
       </aside>
 
       {mobileNavOpen && (
@@ -705,7 +707,7 @@ export default function Layout() {
       )}
 
       {/* Main content */}
-      <main className="ml-0 md:ml-60 flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8">
+      <main className="ml-0 md:ml-[20rem] flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8">
         <Outlet />
       </main>
     </div>
