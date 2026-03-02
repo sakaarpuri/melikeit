@@ -617,22 +617,29 @@ export default function MyFinds() {
   };
 
   const createFromUpload = async (file: File) => {
-    if (file.size > MAX_UPLOAD_BYTES) {
-      setDropError('File is too large. Maximum size is 10MB.');
-      return;
+    try {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setDropError('File is too large. Maximum size is 10MB.');
+        return false;
+      }
+      setDropError('');
+      if (file.type.startsWith('image/')) {
+        await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
+        return true;
+      }
+      await createFind({
+        title: file.name.replace(/\.[^/.]+$/, '') || file.name,
+        description: '',
+        url: '',
+        sectionId: activeSection ?? '',
+        file,
+      });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not add this file.';
+      setDropError(`Could not add "${file.name}": ${message}`);
+      return false;
     }
-    setDropError('');
-    if (file.type.startsWith('image/')) {
-      await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
-      return;
-    }
-    await createFind({
-      title: file.name.replace(/\.[^/.]+$/, '') || file.name,
-      description: '',
-      url: '',
-      sectionId: activeSection ?? '',
-      file,
-    });
   };
 
   const processIncomingFiles = async (incoming: FileList | File[]) => {
@@ -642,15 +649,28 @@ export default function MyFinds() {
       return;
     }
     setDropError('');
-    for (let index = 0; index < files.length; index += 1) {
-      const file = files[index];
-      setIntakeStatus(`Processing ${index + 1}/${files.length}: ${file.name}`);
-      await createFromUpload(file);
+    let successCount = 0;
+    let failureCount = 0;
+    try {
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        setIntakeStatus(`Processing ${index + 1}/${files.length}: ${file.name}`);
+        const ok = await createFromUpload(file);
+        if (ok) successCount += 1;
+        else failureCount += 1;
+      }
+      if (successCount > 0 && failureCount === 0) {
+        setIntakeStatus(`Added ${successCount} item${successCount > 1 ? 's' : ''}.`);
+      } else if (successCount > 0) {
+        setIntakeStatus(`Added ${successCount} item${successCount > 1 ? 's' : ''}; ${failureCount} failed.`);
+      } else {
+        setIntakeStatus('');
+      }
+    } finally {
+      window.setTimeout(() => {
+        setIntakeStatus('');
+      }, 2200);
     }
-    setIntakeStatus(`Added ${files.length} item${files.length > 1 ? 's' : ''}.`);
-    window.setTimeout(() => {
-      setIntakeStatus('');
-    }, 2000);
   };
 
   processIncomingFilesRef.current = (files: File[]) => {
