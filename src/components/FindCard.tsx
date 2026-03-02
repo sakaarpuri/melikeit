@@ -141,7 +141,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   }, []);
 
   return (
-    <div className="border-2 border-ink bg-[#f0f0f0] shadow-retro-lg overflow-hidden">
+    <div className="border-2 border-ink bg-[#f0f0f0] shadow-retro-lg overflow-hidden rounded-2xl">
       <div className="bg-[#f8f8f8] border-b-2 border-ink px-3 py-2 flex items-center gap-2 select-none">
         <div className="w-4 h-4 border border-ink/20 shrink-0" style={{ backgroundColor: dot }} />
         <span className="text-[11px] font-bold uppercase tracking-wider text-ink truncate max-w-[42%]">
