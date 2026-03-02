@@ -793,7 +793,7 @@ export default function MyFinds() {
   }
 
   return (
-    <div className="y2k-surface rounded-2xl p-4 sm:p-6 md:pl-[17rem]">
+    <div className="y2k-surface rounded-2xl p-4 sm:p-6">
       <div className="min-w-0">
         {isFriendsView && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">

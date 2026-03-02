@@ -597,7 +597,7 @@ export default function Layout() {
         </button>
       </header>
 
-      <aside className="hidden md:flex w-60 shrink-0 fixed top-6 left-6 h-[calc(100vh-3rem)] z-40 pointer-events-none">
+      <aside className="hidden md:flex w-56 shrink-0 fixed top-8 left-8 h-[calc(100vh-4rem)] z-40 pointer-events-none">
         <div className="w-full h-full retro-panel-yellow rounded-2xl overflow-hidden flex flex-col pointer-events-auto">
           {sidebarContent}
         </div>
@@ -832,7 +832,7 @@ export default function Layout() {
       )}
 
       {/* Main content */}
-      <main className={`ml-0 flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8 ${isHomeRoute ? 'md:ml-0' : 'md:ml-[17rem]'}`}>
+      <main className={`ml-0 flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8 ${isHomeRoute ? 'md:ml-0' : 'md:ml-[15.5rem]'}`}>
         <Outlet />
       </main>
     </div>
