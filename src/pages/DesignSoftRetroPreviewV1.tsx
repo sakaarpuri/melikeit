@@ -404,7 +404,7 @@ export default function DesignSoftRetroPreviewV1() {
               </div>
             </div>
 
-            <div className="bg-pink/70 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-3 w-full lg:w-[340px]">
+            <div className="bg-pink/35 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-3 w-full lg:w-[340px]">
               <div className="text-right">
                 <div className="text-base font-black text-ink">+Add Finds</div>
                 <div className="text-[11px] font-black text-ink/70 leading-snug">
