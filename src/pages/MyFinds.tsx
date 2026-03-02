@@ -1206,6 +1206,7 @@ export default function MyFinds() {
               <li>Type/paste a link in +Add Finds and press Enter</li>
               <li>Quick note: Cmd/Ctrl+Enter</li>
               <li>Card buttons: D=Details, pencil=Edit</li>
+              <li>Got a genius idea? Roast-worthy feedback also welcome: ea2sakaar@agentmail.to</li>
             </ul>
             <button
               onClick={() => {
