@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { NavLink, Outlet, useSearchParams } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import { BookMarked, Menu, UserPlus, Users, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -12,6 +12,7 @@ type ThemeMode = 'default' | 'plain' | 'stealth';
 
 export default function Layout() {
   const { user } = useAuth();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
@@ -46,6 +47,7 @@ export default function Layout() {
     () => friends.find((friend) => friend.id === selectedFriendId)?.fullName ?? '',
     [friends, selectedFriendId]
   );
+  const isHomeRoute = location.pathname === '/';
   const closeMobileNav = () => setMobileNavOpen(false);
 
   useEffect(() => {
@@ -406,7 +408,7 @@ export default function Layout() {
         </p>
       </div>
 
-      <div className="px-5 pb-5 border-t-2 border-ink/20 pt-3 space-y-3">
+      <div className="px-4 pb-4 border-t-2 border-ink/20 pt-2 space-y-2">
         <div className="flex gap-2">
           <div className="w-3 h-3 rounded-full bg-pink border-2 border-ink" />
           <div className="w-3 h-3 rounded-full bg-cyan border-2 border-ink" />
@@ -447,7 +449,7 @@ export default function Layout() {
         </div>
         <button
           onClick={() => getSupabase()?.auth.signOut()}
-          className="w-full -mt-2 relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink retro-fill-soft text-xs font-black text-ink hover:bg-yellow transition-colors"
+          className="w-full relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink retro-fill-soft text-xs font-black text-ink hover:bg-yellow transition-colors"
         >
           Sign out
         </button>
@@ -472,7 +474,7 @@ export default function Layout() {
         </button>
       </header>
 
-      <aside className="hidden md:flex w-72 shrink-0 fixed top-4 left-4 h-[calc(100vh-2rem)] z-40 pointer-events-none">
+      <aside className="hidden md:flex w-64 shrink-0 fixed top-4 left-4 h-[calc(100vh-2rem)] z-40 pointer-events-none">
         <div className="w-full h-full retro-panel-yellow rounded-2xl overflow-hidden flex flex-col pointer-events-auto">
           {sidebarContent}
         </div>
@@ -707,7 +709,7 @@ export default function Layout() {
       )}
 
       {/* Main content */}
-      <main className="ml-0 md:ml-[20rem] flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8">
+      <main className={`ml-0 flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8 ${isHomeRoute ? 'md:ml-0' : 'md:ml-[18rem]'}`}>
         <Outlet />
       </main>
     </div>

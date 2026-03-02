@@ -818,7 +818,7 @@ export default function MyFinds() {
   }
 
   return (
-    <div className="flex gap-6 y2k-surface rounded-2xl p-4 sm:p-6">
+    <div className="flex gap-6 y2k-surface rounded-2xl p-4 sm:p-6 md:pl-[17rem]">
       {!isFriendsView && (
       <div className="hidden md:block w-52 shrink-0">
         <div className="retro-surface-soft rounded-xl p-4 sticky top-6">
@@ -865,11 +865,13 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-cyan/70 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
-          <span className="text-2xl shrink-0">:|</span>
-          <div>
-            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
-            <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
+        <div className="mb-4 sm:mb-6 flex justify-end">
+          <div className="w-full lg:w-[692px] p-3 sm:p-4 bg-cyan/45 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
+            <span className="text-2xl shrink-0">:|</span>
+            <div>
+              <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
+              <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
+            </div>
           </div>
         </div>
 
