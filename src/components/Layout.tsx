@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router-dom';
-import { BookMarked, Menu, UserPlus, Users, X } from 'lucide-react';
+import { BookMarked, Menu, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
+import type { Section } from '../data/mockData';
 
 function isStrongEnoughPassword(password: string): boolean {
   return /^(?=.{6,})(?=.*(\d|[^A-Za-z0-9])).*$/.test(password);
@@ -22,6 +23,9 @@ export default function Layout() {
     return 'default';
   });
   const [friends, setFriends] = useState<Array<{ id: string; fullName: string; avatarUrl?: string }>>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'sections' | 'friends'>('sections');
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [friendsStatus, setFriendsStatus] = useState('');
   const [inviteLink, setInviteLink] = useState('');
@@ -43,10 +47,7 @@ export default function Layout() {
   const displayName = (user?.user_metadata?.full_name as string | undefined) ?? 'Me';
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? undefined;
   const selectedFriendId = searchParams.get('view') === 'friends' ? searchParams.get('friend') : null;
-  const selectedFriendName = useMemo(
-    () => friends.find((friend) => friend.id === selectedFriendId)?.fullName ?? '',
-    [friends, selectedFriendId]
-  );
+  const selectedSectionId = searchParams.get('section');
   const isHomeRoute = location.pathname === '/';
   const closeMobileNav = () => setMobileNavOpen(false);
 
@@ -115,8 +116,43 @@ export default function Layout() {
     setFriendsLoading(false);
   };
 
+  const loadSections = async () => {
+    if (!user) return;
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    setSectionsLoading(true);
+    const { data, error } = await supabase
+      .from('sections')
+      .select('id,user_id,name,visibility')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+    if (!error) {
+      setSections(
+        ((data ?? []) as Array<{ id: string; user_id: string; name: string; visibility: string | null }>)
+          .map((row) => ({
+            id: row.id,
+            userId: row.user_id,
+            name: row.name,
+            visibility: row.visibility === 'specific_friends' ? 'specific_friends' : 'all_friends',
+          }))
+      );
+    }
+    setSectionsLoading(false);
+  };
+
   useEffect(() => {
     void loadFriends();
+    void loadSections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  useEffect(() => {
+    const onSectionsChanged = () => {
+      void loadSections();
+    };
+    window.addEventListener('melikeit:sections-changed', onSectionsChanged as EventListener);
+    return () => window.removeEventListener('melikeit:sections-changed', onSectionsChanged as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -243,6 +279,7 @@ export default function Layout() {
     const next = new URLSearchParams(searchParams);
     next.set('view', 'friends');
     next.set('friend', friendId);
+    next.delete('section');
     next.delete('friendInvite');
     setSearchParams(next);
     setShowFriends(false);
@@ -254,6 +291,19 @@ export default function Layout() {
     next.delete('view');
     next.delete('friend');
     next.delete('friendInvite');
+    next.delete('section');
+    setSearchParams(next);
+    setShowFriends(false);
+    closeMobileNav();
+  };
+
+  const openSection = (sectionId?: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('view');
+    next.delete('friend');
+    next.delete('friendInvite');
+    if (sectionId) next.set('section', sectionId);
+    else next.delete('section');
     setSearchParams(next);
     setShowFriends(false);
     closeMobileNav();
@@ -357,7 +407,7 @@ export default function Layout() {
         <p className="text-xs text-ink/60 mt-0.5 font-medium">place for all your 'finds'</p>
       </div>
 
-      <nav className="flex flex-col gap-0.5 px-3 pt-14">
+      <nav className="flex flex-col gap-0.5 px-3 pt-4">
         <NavLink
           to="/"
           end
@@ -367,7 +417,7 @@ export default function Layout() {
           }}
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all border-2 ${
-              isActive
+              isActive && !selectedSectionId && !selectedFriendId
                 ? 'bg-pink border-ink text-ink shadow-retro'
                 : 'border-transparent text-ink hover:border-ink hover:bg-white/50'
             }`
@@ -378,27 +428,98 @@ export default function Layout() {
         </NavLink>
       </nav>
 
-      <div className="flex-1" />
-
-      <div className="mx-3 mb-3">
-        <button
-          onClick={() => {
-            setShowFriends(true);
-            closeMobileNav();
-          }}
-          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 retro-surface-muted hover:brightness-95 transition-all"
-          title="Open friends"
-          aria-label="Open friends"
-        >
-          <Users size={16} />
-          <div className="min-w-0 flex-1 text-left">
-            <p className="text-xs font-bold text-ink truncate">Friends</p>
-            <p className="text-[10px] text-ink/60 font-medium">
-              {selectedFriendName ? `Viewing ${selectedFriendName}` : `${friends.length} connected`}
-            </p>
-          </div>
-        </button>
+      <div className="px-3 mt-2">
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSidebarTab('sections')}
+            className={`px-2 py-1.5 rounded-lg border-2 text-xs font-black uppercase tracking-wide ${
+              sidebarTab === 'sections' ? 'bg-ink text-white border-ink' : 'retro-surface-muted text-ink border-ink'
+            }`}
+          >
+            Sections
+          </button>
+          <button
+            type="button"
+            onClick={() => setSidebarTab('friends')}
+            className={`px-2 py-1.5 rounded-lg border-2 text-xs font-black uppercase tracking-wide ${
+              sidebarTab === 'friends' ? 'bg-ink text-white border-ink' : 'retro-surface-muted text-ink border-ink'
+            }`}
+          >
+            Friends
+          </button>
+        </div>
       </div>
+
+      {sidebarTab === 'sections' ? (
+        <div className="px-3 mt-2 space-y-1 overflow-y-auto max-h-[38vh]">
+          <button
+            type="button"
+            onClick={() => openSection(undefined)}
+            className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm font-black transition-all ${
+              !selectedSectionId && !selectedFriendId
+                ? 'bg-ink text-white border-ink'
+                : 'retro-surface-muted text-ink border-ink hover:bg-white/80'
+            }`}
+          >
+            All Finds
+          </button>
+          {sectionsLoading && <p className="text-[11px] font-semibold text-ink/60 px-1 py-1">Loading sections…</p>}
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => openSection(section.id)}
+              className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm font-black transition-all truncate ${
+                selectedSectionId === section.id
+                  ? 'bg-pink text-ink border-ink shadow-retro'
+                  : 'retro-surface-muted text-ink border-ink hover:bg-white/80'
+              }`}
+              title={section.name}
+            >
+              {section.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="px-3 mt-2 space-y-2 overflow-y-auto max-h-[38vh]">
+          <button
+            type="button"
+            onClick={() => {
+              setShowFriends(true);
+              closeMobileNav();
+            }}
+            className="w-full px-3 py-2 rounded-lg border-2 border-ink bg-pink text-ink text-xs font-black shadow-retro"
+          >
+            Manage friends
+          </button>
+          {friendsLoading && <p className="text-[11px] font-semibold text-ink/60 px-1">Loading friends…</p>}
+          {!friendsLoading && friends.length === 0 && (
+            <p className="text-[11px] font-semibold text-ink/60 px-1">No friends connected yet.</p>
+          )}
+          {friends.map((friend) => (
+            <button
+              key={friend.id}
+              type="button"
+              onClick={() => openFriendFinds(friend.id)}
+              className={`w-full flex items-center gap-2 rounded-lg border-2 px-2 py-1.5 text-left transition-all ${
+                selectedFriendId === friend.id ? 'bg-cyan border-ink shadow-retro' : 'retro-surface-muted border-ink'
+              }`}
+            >
+              {friend.avatarUrl ? (
+                <img src={friend.avatarUrl} alt={friend.fullName} className="w-6 h-6 rounded-full border-2 border-ink" />
+              ) : (
+                <div className="w-6 h-6 rounded-full border-2 border-ink bg-white grid place-items-center text-[10px] font-black text-ink">
+                  {friend.fullName.slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              <span className="text-xs font-black text-ink truncate">{friend.fullName}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex-1" />
 
       <div className="mx-3 mb-3 p-3 rounded-lg retro-surface-muted">
         <p className="text-xs font-black text-ink uppercase tracking-wide mb-1">🚫 House Rules</p>
@@ -408,32 +529,40 @@ export default function Layout() {
         </p>
       </div>
 
-      <div className="px-4 pb-4 border-t-2 border-ink/20 pt-2 space-y-2">
+      <div className="px-3 pb-3 border-t-2 border-ink/20 pt-2 space-y-2">
         <div className="flex gap-2">
           <div className="w-3 h-3 rounded-full bg-pink border-2 border-ink" />
           <div className="w-3 h-3 rounded-full bg-cyan border-2 border-ink" />
           <div className="w-3 h-3 rounded-full bg-ink" />
         </div>
-        <button
-          onClick={() => {
-            openSettings();
-            closeMobileNav();
-          }}
-          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 retro-surface-muted hover:brightness-95 transition-all"
-          title="Open user settings"
-          aria-label="Open user settings"
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName} className="w-8 h-8 rounded-full border-2 border-ink" />
-          ) : (
-            <div className="w-8 h-8 rounded-full border-2 border-ink bg-white grid place-items-center text-xs font-black text-ink">
-              {displayName.slice(0, 1).toUpperCase()}
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              openSettings();
+              closeMobileNav();
+            }}
+            className="flex-1 min-w-0 flex items-center gap-2.5 rounded-lg px-2 py-2 retro-surface-muted hover:brightness-95 transition-all"
+            title="Open user settings"
+            aria-label="Open user settings"
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="w-7 h-7 rounded-full border-2 border-ink" />
+            ) : (
+              <div className="w-7 h-7 rounded-full border-2 border-ink bg-white grid place-items-center text-xs font-black text-ink">
+                {displayName.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1 text-left">
+              <p className="text-xs font-bold text-ink truncate">{displayName}</p>
             </div>
-          )}
-          <div className="min-w-0 flex-1 text-left">
-            <p className="text-xs font-bold text-ink truncate">{displayName}</p>
-          </div>
-        </button>
+          </button>
+          <button
+            onClick={() => getSupabase()?.auth.signOut()}
+            className="px-3 py-2 rounded-lg border-2 border-ink retro-fill-soft text-xs font-black text-ink hover:bg-yellow transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
         <div className="flex items-center gap-2">
           <label className="text-[10px] font-black uppercase tracking-wider text-ink/60 shrink-0">Mode</label>
           <select
@@ -447,12 +576,6 @@ export default function Layout() {
             <option value="stealth">Stealth</option>
           </select>
         </div>
-        <button
-          onClick={() => getSupabase()?.auth.signOut()}
-          className="w-full relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink retro-fill-soft text-xs font-black text-ink hover:bg-yellow transition-colors"
-        >
-          Sign out
-        </button>
       </div>
     </>
   );

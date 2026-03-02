@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import FindCard from '../components/FindCard';
-import SectionManager from '../components/SectionManager';
 import CreateFindModal from '../components/CreateFindModal';
 import type { Find, FindType, Section, User, Visibility } from '../data/mockData';
 import { JOKES_OF_THE_DAY } from '../data/mockData';
@@ -176,6 +175,10 @@ function isMissingColumnError(message: string | undefined, column: string): bool
   );
 }
 
+function notifySectionsChanged() {
+  window.dispatchEvent(new CustomEvent('melikeit:sections-changed'));
+}
+
 export default function MyFinds() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -196,7 +199,6 @@ export default function MyFinds() {
     return 'standard';
   });
 
-  const [activeSection, setActiveSection] = useState<string | undefined>(undefined);
   const [showModal, setShowModal] = useState(false);
   const [dropError, setDropError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -229,6 +231,7 @@ export default function MyFinds() {
   const viewMode = searchParams.get('view');
   const selectedFriendId = viewMode === 'friends' ? searchParams.get('friend') ?? '' : '';
   const isFriendsView = !!selectedFriendId;
+  const activeSection = isFriendsView ? undefined : (searchParams.get('section') ?? undefined);
 
   const mySections = useMemo(() => sections.filter((s) => s.userId === me.id), [sections, me.id]);
   const filtered = useMemo(() => {
@@ -253,12 +256,6 @@ export default function MyFinds() {
   useEffect(() => {
     window.localStorage.setItem('melikeit.gridMode', gridMode);
   }, [gridMode]);
-
-  useEffect(() => {
-    if (isFriendsView && activeSection) {
-      setActiveSection(undefined);
-    }
-  }, [isFriendsView, activeSection]);
 
   const resolveSectionName = (sectionId?: string) => (
     sectionId ? mySections.find((section) => section.id === sectionId)?.name : undefined
@@ -373,6 +370,7 @@ export default function MyFinds() {
         return;
       }
       typedSections = (defaultRows ?? []) as unknown as DbSectionRow[];
+      notifySectionsChanged();
     }
     setSections(typedSections.map(mapSection));
 
@@ -782,31 +780,8 @@ export default function MyFinds() {
     }
     const mapped = mapSection(data as unknown as DbSectionRow);
     setSections((prev) => [...prev, mapped]);
+    notifySectionsChanged();
     return mapped;
-  };
-
-  const renameSection = async (sectionId: string, nextName: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return;
-    const name = nextName.trim();
-    if (!name) return;
-    const { error: updateError } = await supabase
-      .from('sections')
-      .update({ name })
-      .eq('id', sectionId);
-    if (updateError) {
-      setError(updateError.message);
-      return;
-    }
-    setSections((prev) => prev.map((section) => (section.id === sectionId ? { ...section, name } : section)));
-  };
-
-  const deleteSection = async (sectionId: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return;
-    await supabase.from('sections').delete().eq('id', sectionId);
-    setSections((prev) => prev.filter((s) => s.id !== sectionId));
-    await loadAll();
   };
 
   if (loading) {
@@ -818,33 +793,8 @@ export default function MyFinds() {
   }
 
   return (
-    <div className="flex gap-6 y2k-surface rounded-2xl p-4 sm:p-6 md:pl-[17rem]">
-      {!isFriendsView && (
-      <div className="hidden md:block w-52 shrink-0">
-        <div className="retro-surface-soft rounded-xl p-4 sticky top-6">
-          <div
-            className={`px-2.5 py-2 rounded-lg cursor-pointer mb-2 text-sm font-black border-2 transition-all ${
-              !activeSection
-                ? 'bg-ink text-white border-ink'
-                : 'text-ink border-transparent hover:border-ink hover:bg-yellow'
-            }`}
-            onClick={() => setActiveSection(undefined)}
-          >
-            All Finds
-          </div>
-          <SectionManager
-            sections={mySections}
-            onSectionClick={(id) => setActiveSection(id === activeSection ? undefined : id)}
-            activeSectionId={activeSection}
-            onCreateSection={createSection}
-            onRenameSection={renameSection}
-            onDeleteSection={deleteSection}
-          />
-        </div>
-      </div>
-      )}
-
-      <div className="flex-1 min-w-0">
+    <div className="y2k-surface rounded-2xl p-4 sm:p-6 md:pl-[17rem]">
+      <div className="min-w-0">
         {isFriendsView && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
             <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Friends View</p>
