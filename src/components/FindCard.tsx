@@ -6,13 +6,13 @@ import { getSupabase } from '../supabase/client';
 import Tooltip from './Tooltip';
 
 const TYPE_DOT: Record<FindType, string> = {
-  article: '#FF4D9E',
-  product: '#FFE500',
-  place:   '#00C9D4',
-  video:   '#FF6B35',
-  music:   '#A855F7',
-  recipe:  '#22C55E',
-  other:   '#9CA3AF',
+  article: 'rgb(var(--type-dot-article))',
+  product: 'rgb(var(--type-dot-product))',
+  place: 'rgb(var(--type-dot-place))',
+  video: 'rgb(var(--type-dot-video))',
+  music: 'rgb(var(--type-dot-music))',
+  recipe: 'rgb(var(--type-dot-recipe))',
+  other: 'rgb(var(--type-dot-other))',
 };
 
 const TYPE_LABELS: Record<FindType, string> = {

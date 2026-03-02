@@ -17,6 +17,14 @@
   --cyan-dark: 0 168 178;
   --yellow: 255 229 0;
   --yellow-dark: 230 206 0;
+
+  --type-dot-article: 255 77 158;
+  --type-dot-product: 255 229 0;
+  --type-dot-place: 0 201 212;
+  --type-dot-video: 255 107 53;
+  --type-dot-music: 168 85 247;
+  --type-dot-recipe: 34 197 94;
+  --type-dot-other: 156 163 175;
 }
 
 html[data-theme="plain"] {
@@ -32,6 +40,14 @@ html[data-theme="plain"] {
   --cyan-dark: 188 188 188;
   --yellow: 236 236 236;
   --yellow-dark: 212 212 212;
+
+  --type-dot-article: 110 110 110;
+  --type-dot-product: 150 150 150;
+  --type-dot-place: 125 125 125;
+  --type-dot-video: 95 95 95;
+  --type-dot-music: 120 120 120;
+  --type-dot-recipe: 105 105 105;
+  --type-dot-other: 140 140 140;
 }
 
 html[data-theme="stealth"] {
@@ -47,6 +63,14 @@ html[data-theme="stealth"] {
   --cyan-dark: 66 103 115;
   --yellow: 100 106 88;
   --yellow-dark: 82 88 72;
+
+  --type-dot-article: 130 108 124;
+  --type-dot-product: 132 128 104;
+  --type-dot-place: 94 120 128;
+  --type-dot-video: 146 108 92;
+  --type-dot-music: 116 104 138;
+  --type-dot-recipe: 94 122 104;
+  --type-dot-other: 120 126 136;
 }
 
 html {
@@ -120,11 +144,18 @@ html[data-theme="stealth"] .y2k-surface::before {
 /* Theme overrides for common Tailwind hard-coded colors. */
 html[data-theme="stealth"] .bg-white { background-color: rgb(var(--paper)) !important; }
 html[data-theme="stealth"] .bg-black { background-color: rgb(0 0 0) !important; }
+html[data-theme="stealth"] .border-ink { border-color: rgb(128 136 150) !important; }
+html[data-theme="stealth"] .border-ink\/80 { border-color: rgb(128 136 150 / 0.8) !important; }
+html[data-theme="stealth"] .border-ink\/30 { border-color: rgb(128 136 150 / 0.3) !important; }
+html[data-theme="stealth"] .border-ink\/20 { border-color: rgb(128 136 150 / 0.2) !important; }
+html[data-theme="stealth"] .border-ink\/15 { border-color: rgb(128 136 150 / 0.15) !important; }
+html[data-theme="stealth"] .bg-\[\#3ff07a\] { background-color: rgb(94 132 108) !important; }
 
 html[data-theme="stealth"] .bg-\[\#f0f0f0\] { background-color: rgb(var(--surface)) !important; }
 html[data-theme="stealth"] .bg-\[\#efefef\] { background-color: rgb(var(--surface)) !important; }
 html[data-theme="stealth"] .bg-\[\#f8f8f8\] { background-color: rgb(var(--chrome)) !important; }
 html[data-theme="stealth"] .bg-\[\#ececec\] { background-color: rgb(var(--chrome)) !important; }
+html[data-theme="stealth"] .bg-\[\#f2f2f2\] { background-color: rgb(var(--surface)) !important; }
 
 .y2k-surface::before {
   content: '';
