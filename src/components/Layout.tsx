@@ -497,8 +497,8 @@ export default function Layout() {
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/50" onClick={() => setShowSettings(false)} />
-          <div className="relative w-full max-w-md bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
-            <div className="px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
+          <div className="relative w-full max-w-md max-h-[90vh] bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
+            <div className="px-4 sm:px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
               <h2 className="text-sm font-black text-ink uppercase tracking-wide">User Settings</h2>
               <button
                 onClick={() => setShowSettings(false)}
@@ -507,7 +507,7 @@ export default function Layout() {
                 Close
               </button>
             </div>
-            <div className="p-5 space-y-6">
+            <div className="p-4 sm:p-5 space-y-6 overflow-y-auto max-h-[calc(90vh-64px)]">
               <form onSubmit={saveName} className="space-y-2">
                 <label className="text-xs font-black text-ink uppercase tracking-wider">Edit name</label>
                 <input
@@ -560,8 +560,8 @@ export default function Layout() {
       {showFriends && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/50" onClick={() => setShowFriends(false)} />
-          <div className="relative w-full max-w-md bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
-            <div className="px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
+          <div className="relative w-full max-w-md max-h-[90vh] bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
+            <div className="px-4 sm:px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
               <h2 className="text-sm font-black text-ink uppercase tracking-wide">Friends</h2>
               <button
                 onClick={() => setShowFriends(false)}
@@ -570,7 +570,7 @@ export default function Layout() {
                 Close
               </button>
             </div>
-            <div className="p-5 space-y-3">
+            <div className="p-4 sm:p-5 space-y-3 overflow-y-auto max-h-[calc(90vh-64px)]">
               <div className="border-2 border-ink rounded-lg p-3 bg-white space-y-1">
                 <p className="text-[11px] font-black text-ink uppercase tracking-wide">Invite options</p>
                 <p className="text-[11px] font-medium text-ink/80">Invite link: send to someone new so they can join and connect.</p>
@@ -663,11 +663,11 @@ export default function Layout() {
       {invitePrompt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/50" onClick={() => { setInvitePrompt(null); clearInviteParam(); }} />
-          <div className="relative w-full max-w-sm bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
+          <div className="relative w-full max-w-sm max-h-[90vh] bg-white border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
             <div className="px-5 py-4 bg-yellow border-b-2 border-ink">
               <h2 className="text-sm font-black text-ink uppercase tracking-wide">Friend invite</h2>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-64px)]">
               <div className="flex items-center gap-3">
                 {invitePrompt.fromAvatarUrl ? (
                   <img src={invitePrompt.fromAvatarUrl} alt={invitePrompt.fromName} className="w-10 h-10 rounded-full border-2 border-ink" />

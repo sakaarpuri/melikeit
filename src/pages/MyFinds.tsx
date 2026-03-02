@@ -1121,8 +1121,8 @@ export default function MyFinds() {
       {showHelp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-ink/50" onClick={() => setShowHelp(false)} />
-          <div className="help-pop-in relative w-full max-w-md bg-white/90 backdrop-blur-[1px] border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
-            <div className="px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
+          <div className="help-pop-in relative w-full max-w-md max-h-[90vh] bg-white/90 backdrop-blur-[1px] border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
+            <div className="px-4 sm:px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
               <h2 className="text-sm font-black text-ink uppercase tracking-wide">Add finds fast</h2>
               <button
                 onClick={() => setShowHelp(false)}
@@ -1131,7 +1131,7 @@ export default function MyFinds() {
                 Close
               </button>
             </div>
-            <div className="p-5 space-y-3 text-sm text-ink/80">
+            <div className="p-4 sm:p-5 space-y-3 text-sm text-ink/80 overflow-y-auto max-h-[calc(90vh-64px)]">
               <ul className="list-disc pl-5 space-y-2 text-sm font-medium">
                 <li>Drop screenshots, links, or files anywhere on the grid</li>
                 <li>Paste screenshot: Cmd/Ctrl+V</li>
