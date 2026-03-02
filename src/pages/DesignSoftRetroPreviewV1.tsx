@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Grid3X3, Link2, List, Plus, StickyNote } from 'lucide-react';
+import { Grid3X3, List, Plus } from 'lucide-react';
 import type { Find, FindType } from '../data/mockData';
 import { currentUserId, friendIds, finds as seedFinds, sections as seedSections, users as mockUsers } from '../data/mockData';
 
@@ -182,7 +182,6 @@ export default function DesignSoftRetroPreviewV1() {
   const MAX_PREVIEW_DROP_BYTES = 10 * 1024 * 1024;
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [density, setDensity] = useState<CardDensity>('standard');
-  const [query, setQuery] = useState('');
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>('sections');
   const [selectedFriendId, setSelectedFriendId] = useState<string>('');
   const [quickLink, setQuickLink] = useState('');
@@ -221,10 +220,8 @@ export default function DesignSoftRetroPreviewV1() {
   const filtered = useMemo(() => {
     const byAuthor = allFinds.filter((f) => f.authorId === activeAuthorId);
     const base = selectedSection === 'all' ? byAuthor : byAuthor.filter((f) => f.sectionId === selectedSection);
-    const q = query.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((f) => `${f.title} ${f.description} ${f.url ?? ''} ${f.fileName ?? ''}`.toLowerCase().includes(q));
-  }, [activeAuthorId, allFinds, query, selectedSection]);
+    return base;
+  }, [activeAuthorId, allFinds, selectedSection]);
 
   const gridCols =
     density === 'compact'
@@ -368,14 +365,14 @@ export default function DesignSoftRetroPreviewV1() {
           </div>
 
           {/* Keep the existing app’s “Quick note” and “+Add Finds” flow (preview-only behavior) */}
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <div className="bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-4">
-              <div className="text-sm font-black uppercase tracking-wider text-ink">Quick note</div>
-              <div className="mt-3 space-y-3">
+          <div className="mt-6 grid gap-3 lg:grid-cols-2">
+            <div className="bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-3">
+              <div className="text-xs font-black uppercase tracking-wider text-ink">Quick note</div>
+              <div className="mt-2 space-y-2">
                 <select
                   value={quickNoteSectionId}
                   onChange={(e) => setQuickNoteSectionId(e.target.value)}
-                  className="h-10 w-full border-2 border-ink bg-white px-3 text-xs font-black"
+                  className="h-9 w-full border-2 border-ink bg-white px-2 text-xs font-black"
                 >
                   <option value="">No section</option>
                   {mySections.map((section) => (
@@ -388,12 +385,12 @@ export default function DesignSoftRetroPreviewV1() {
                   value={quickNote}
                   onChange={(e) => setQuickNote(e.target.value)}
                   placeholder="Type a note… (Cmd/Ctrl + Enter to add)"
-                  className="w-full h-24 border-2 border-ink bg-white px-3 py-2 text-sm font-semibold resize-none"
+                  className="w-full h-20 border-2 border-ink bg-white px-2 py-2 text-sm font-semibold resize-none"
                 />
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    className="h-10 px-4 border-2 border-ink bg-yellow shadow-retro text-xs font-black"
+                    className="h-9 px-3 border-2 border-ink bg-yellow shadow-retro text-xs font-black"
                     onClick={() => {
                       if (!quickNote.trim()) return;
                       addNewFind({
@@ -411,21 +408,21 @@ export default function DesignSoftRetroPreviewV1() {
               </div>
             </div>
 
-            <div className="bg-pink/70 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-4">
+            <div className="bg-pink/70 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-3">
               <div className="text-right">
-                <div className="text-lg font-black text-ink">+Add Finds</div>
-                <div className="text-xs font-black text-ink/70 leading-snug">
+                <div className="text-base font-black text-ink">+Add Finds</div>
+                <div className="text-[11px] font-black text-ink/70 leading-snug">
                   paste links / drag files here
                   <br />
                   press Enter to add
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-2">
                 <input
                   value={quickLink}
                   onChange={(e) => setQuickLink(e.target.value)}
                   placeholder="Paste a link…"
-                  className="w-full h-11 border-2 border-ink bg-white/85 px-3 text-sm font-semibold placeholder:text-ink/40"
+                  className="w-full h-10 border-2 border-ink bg-white/85 px-2 text-sm font-semibold placeholder:text-ink/40"
                   onKeyDown={(e) => {
                     if (e.key !== 'Enter') return;
                     const url = extractFirstUrl(quickLink);
@@ -434,32 +431,6 @@ export default function DesignSoftRetroPreviewV1() {
                     setQuickLink('');
                   }}
                 />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-4">
-            <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-              <div className="flex items-center gap-3 flex-1">
-                <div className="h-10 w-10 rounded-xl border-2 border-ink bg-white grid place-items-center text-ink/70">
-                  <Link2 size={18} />
-                </div>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Paste a link, drop a file, or type a quick note..."
-                  className="w-full bg-transparent outline-none text-sm font-semibold placeholder:text-ink/35"
-                />
-              </div>
-              <div className="flex items-center gap-2 justify-end">
-                <button className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-white px-3 py-2 text-xs font-black text-ink/75">
-                  <StickyNote size={14} />
-                  Note
-                </button>
-                <button className="inline-flex items-center gap-2 rounded-xl border-2 border-ink bg-white px-3 py-2 text-xs font-black text-ink/75">
-                  <Link2 size={14} />
-                  Link
-                </button>
               </div>
             </div>
           </div>
