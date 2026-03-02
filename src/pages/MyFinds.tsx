@@ -12,6 +12,7 @@ const MAX_STORED_IMAGE_DIMENSION = 1600;
 const QUICK_NOTE_NEW_SECTION_OPTION = '__create_new_section__';
 const DEFAULT_SECTION_NAMES = ['Articles', 'Videos', 'Products', 'Places', 'Recipes', 'Notes'];
 const SECTION_SUBSECTION_SEPARATOR = ' / ';
+const DROP_ANYWHERE_TOAST_KEY = 'melikeit.dropAnywhereToastSeen';
 
 function handleFromName(name?: string): string {
   const raw = (name ?? '').trim().toLowerCase();
@@ -224,8 +225,10 @@ export default function MyFinds() {
   const [quickNoteSectionId, setQuickNoteSectionId] = useState('');
   const [quickNoteSubsectionName, setQuickNoteSubsectionName] = useState('');
   const [intakeStatus, setIntakeStatus] = useState('');
+  const [showDropAnywhereToast, setShowDropAnywhereToast] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const processIncomingFilesRef = useRef<(files: File[]) => void>(() => {});
+  const dropToastTimeoutRef = useRef<number | null>(null);
   const [isGridDragging, setIsGridDragging] = useState(false);
   const gridDragCounterRef = useRef(0);
   const [friendAuthor, setFriendAuthor] = useState<User | null>(null);
@@ -646,6 +649,16 @@ export default function MyFinds() {
       setDropError('No supported files or links found.');
       return;
     }
+    const hasSeenDropToast = window.localStorage.getItem(DROP_ANYWHERE_TOAST_KEY) === '1';
+    if (!hasSeenDropToast) {
+      window.localStorage.setItem(DROP_ANYWHERE_TOAST_KEY, '1');
+      setShowDropAnywhereToast(true);
+      if (dropToastTimeoutRef.current) window.clearTimeout(dropToastTimeoutRef.current);
+      dropToastTimeoutRef.current = window.setTimeout(() => {
+        setShowDropAnywhereToast(false);
+        dropToastTimeoutRef.current = null;
+      }, 2600);
+    }
     setDropError('');
     let successCount = 0;
     let failureCount = 0;
@@ -674,6 +687,10 @@ export default function MyFinds() {
   processIncomingFilesRef.current = (files: File[]) => {
     void processIncomingFiles(files);
   };
+
+  useEffect(() => () => {
+    if (dropToastTimeoutRef.current) window.clearTimeout(dropToastTimeoutRef.current);
+  }, []);
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
@@ -1175,6 +1192,12 @@ export default function MyFinds() {
           </div>
         )}
       </div>
+
+      {showDropAnywhereToast && (
+        <div className="fixed right-4 bottom-4 z-40 border-2 border-ink bg-white px-3 py-2 rounded-lg shadow-retro">
+          <p className="text-xs font-black text-ink">Drop anywhere to add files</p>
+        </div>
+      )}
 
     {showModal && (
       <CreateFindModal
