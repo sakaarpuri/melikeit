@@ -384,7 +384,7 @@ export default function Layout() {
             setShowFriends(true);
             closeMobileNav();
           }}
-          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 border-2 border-ink bg-white hover:bg-white/70 transition-colors"
+          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 retro-surface-muted hover:brightness-95 transition-all"
           title="Open friends"
           aria-label="Open friends"
         >
@@ -398,7 +398,7 @@ export default function Layout() {
         </button>
       </div>
 
-      <div className="mx-3 mb-3 p-3 bg-white border-2 border-ink rounded-lg shadow-retro">
+      <div className="mx-3 mb-3 p-3 rounded-lg retro-surface-muted">
         <p className="text-xs font-black text-ink uppercase tracking-wide mb-1">🚫 House Rules</p>
         <p className="text-xs text-ink/70 leading-snug font-medium">
           No memes. No WhatsApp forwards. No Insta reposts.{' '}
@@ -417,7 +417,7 @@ export default function Layout() {
             openSettings();
             closeMobileNav();
           }}
-          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 border-2 border-ink bg-white hover:bg-white/70 transition-colors"
+          className="w-full flex items-center gap-2.5 rounded-lg px-2 py-2 retro-surface-muted hover:brightness-95 transition-all"
           title="Open user settings"
           aria-label="Open user settings"
         >
@@ -437,7 +437,7 @@ export default function Layout() {
           <select
             value={themeMode}
             onChange={(e) => setThemeMode(e.target.value as ThemeMode)}
-            className="flex-1 px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-[11px] font-black text-ink"
+            className="flex-1 px-2 py-1.5 rounded-lg border-2 border-ink retro-fill-soft text-[11px] font-black text-ink"
             aria-label="Theme mode"
           >
             <option value="default">Default</option>
@@ -447,7 +447,7 @@ export default function Layout() {
         </div>
         <button
           onClick={() => getSupabase()?.auth.signOut()}
-          className="w-full -mt-2 relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
+          className="w-full -mt-2 relative z-10 px-2 py-1.5 rounded-lg border-2 border-ink retro-fill-soft text-xs font-black text-ink hover:bg-yellow transition-colors"
         >
           Sign out
         </button>

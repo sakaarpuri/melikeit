@@ -144,3 +144,28 @@ html[data-theme="stealth"] .bg-\[\#ececec\] { background-color: rgb(var(--chrome
 .help-pop-in {
   animation: help-pop-in 180ms ease-out both;
 }
+
+.retro-surface-soft {
+  background-color: rgb(var(--paper) / 0.75);
+  backdrop-filter: blur(1px);
+  border: 2px solid rgb(var(--ink));
+  box-shadow: 3px 3px 0 rgb(var(--ink));
+}
+
+.retro-surface-muted {
+  background-color: rgb(var(--paper) / 0.7);
+  backdrop-filter: blur(1px);
+  border: 2px solid rgb(var(--ink));
+  box-shadow: 3px 3px 0 rgb(var(--ink));
+}
+
+.retro-panel-yellow {
+  background-color: rgb(var(--yellow) / 0.6);
+  backdrop-filter: blur(1px);
+  border: 2px solid rgb(var(--ink));
+  box-shadow: 3px 3px 0 rgb(var(--ink));
+}
+
+.retro-fill-soft {
+  background-color: rgb(var(--paper) / 0.85);
+}

@@ -821,7 +821,7 @@ export default function MyFinds() {
     <div className="flex gap-6 y2k-surface rounded-2xl p-4 sm:p-6">
       {!isFriendsView && (
       <div className="hidden md:block w-52 shrink-0">
-        <div className="bg-white rounded-xl border-2 border-ink shadow-retro p-4 sticky top-6">
+        <div className="retro-surface-soft rounded-xl p-4 sticky top-6">
           <div
             className={`px-2.5 py-2 rounded-lg cursor-pointer mb-2 text-sm font-black border-2 transition-all ${
               !activeSection
@@ -865,7 +865,7 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-cyan/70 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
           <span className="text-2xl shrink-0">:|</span>
           <div>
             <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
@@ -875,7 +875,7 @@ export default function MyFinds() {
 
         {!isFriendsView && (
           <div className="mb-4 sm:mb-6 flex flex-col gap-2 sm:gap-3 lg:flex-row lg:justify-end">
-            <div className="w-full lg:w-[340px] bg-white border-2 border-ink rounded-xl shadow-retro p-3">
+            <div className="w-full lg:w-[340px] retro-surface-soft rounded-xl p-3">
               <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
               <select
                 value={quickNoteSectionId}
@@ -974,7 +974,7 @@ export default function MyFinds() {
                   }}
                   placeholder={"+Add Finds\npaste links / drag files here\npress Enter to add"}
                   rows={3}
-                  className="w-full min-h-[72px] resize-none rounded-lg border-2 border-ink/70 bg-white/75 px-2.5 py-1.5 text-right text-sm font-black leading-tight text-ink placeholder:text-ink/70 focus:outline-none focus:border-ink"
+                  className="w-full min-h-[72px] resize-none rounded-lg border-2 border-ink/70 retro-fill-soft px-2.5 py-1.5 text-right text-sm font-black leading-tight text-ink placeholder:text-ink/70 focus:outline-none focus:border-ink"
                 />
                 <div className="mt-2 flex justify-end">
                   <button
