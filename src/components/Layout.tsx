@@ -457,7 +457,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex">
-      <header className="md:hidden fixed top-0 left-0 right-0 z-30 border-b-2 border-ink bg-yellow px-4 py-3 flex items-center justify-between">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-30 border-b-2 border-ink bg-yellow/70 backdrop-blur-[1px] px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-black tracking-tight">
           <span className="text-ink">me</span>
           <span className="text-pink">Likes</span>
@@ -472,14 +472,14 @@ export default function Layout() {
         </button>
       </header>
 
-      <aside className="hidden md:flex w-60 shrink-0 fixed top-0 left-0 h-screen border-r-2 border-ink bg-yellow flex-col z-40">
+      <aside className="hidden md:flex w-60 shrink-0 fixed top-0 left-0 h-screen border-r-2 border-ink bg-yellow/70 backdrop-blur-[1px] flex-col z-40">
         {sidebarContent}
       </aside>
 
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div className="absolute inset-0 bg-ink/50" onClick={closeMobileNav} />
-          <aside className="relative w-64 h-full border-r-2 border-ink bg-yellow flex flex-col">
+          <aside className="relative w-64 h-full border-r-2 border-ink bg-yellow/70 backdrop-blur-[1px] flex flex-col">
             <div className="absolute top-3 right-3">
               <button
                 onClick={closeMobileNav}
