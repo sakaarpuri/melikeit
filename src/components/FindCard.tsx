@@ -142,7 +142,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
 
   return (
     <div className="border-2 border-ink bg-[#f0f0f0] shadow-retro-lg overflow-hidden rounded-2xl">
-      <div className="bg-[#f8f8f8] border-b-2 border-ink px-3 py-2 flex items-center gap-2 select-none">
+      <div className="bg-[#f8f8f8] border-b-2 border-ink px-2.5 py-1.5 flex items-center gap-2 select-none">
         <div className="w-4 h-4 border border-ink/20 shrink-0" style={{ backgroundColor: dot }} />
         <span className="text-[11px] font-bold uppercase tracking-wider text-ink truncate max-w-[42%]">
           {displayTitle}
@@ -161,13 +161,13 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           <img
             src={find.imageUrl}
             alt={displayTitle}
-            className="block w-full h-56 object-cover"
+            className="block w-full h-52 object-cover"
           />
         ) : videoThumbnailUrl && erroredVideoThumbUrl !== videoThumbnailUrl ? (
           <img
             src={videoThumbnailUrl}
             alt={displayTitle}
-            className="block w-full h-56 object-cover"
+            className="block w-full h-52 object-cover"
             loading="lazy"
             onError={() => setErroredVideoThumbUrl(videoThumbnailUrl)}
           />
@@ -175,13 +175,13 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           <img
             src={linkPreviewUrl}
             alt={displayTitle}
-            className="block w-full h-56 object-cover"
+            className="block w-full h-52 object-cover"
             loading="lazy"
             onError={() => setErroredPreviewUrl(find.url ?? '')}
           />
         ) : (
           <div
-            className="h-56 w-full grid place-items-center text-ink"
+            className="h-52 w-full grid place-items-center text-ink"
             style={{
               background:
                 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.38), transparent 34%), linear-gradient(135deg, #f2f2f2 0%, #d9d9d9 55%, #e6e6e6 100%)',
@@ -208,7 +208,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
         )}
       </div>
 
-      <div className="bg-[#efefef] p-3">
+      <div className="bg-[#efefef] p-2.5">
         <div className="flex items-center justify-between mb-2 text-[11px] font-bold uppercase tracking-wider text-ink/80">
           <span className="inline-flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 border border-ink/30" style={{ backgroundColor: dot }} />

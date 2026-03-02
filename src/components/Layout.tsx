@@ -426,7 +426,7 @@ export default function Layout() {
         </NavLink>
       </nav>
 
-      <div className="px-3 mt-2">
+      <div className="px-3 mt-4">
         <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
@@ -450,7 +450,7 @@ export default function Layout() {
       </div>
 
       {sidebarTab === 'sections' ? (
-        <div className="px-3 mt-2 space-y-1 overflow-y-auto max-h-[38vh]">
+        <div className="px-3 mt-3 space-y-1 overflow-y-auto max-h-[38vh]">
           <button
             type="button"
             onClick={() => openSection(undefined)}
@@ -480,7 +480,7 @@ export default function Layout() {
           ))}
         </div>
       ) : (
-        <div className="px-3 mt-2 space-y-2 overflow-y-auto max-h-[38vh]">
+        <div className="px-3 mt-3 space-y-2 overflow-y-auto max-h-[38vh]">
           <button
             type="button"
             onClick={() => {
@@ -596,13 +596,27 @@ export default function Layout() {
       </header>
 
       <div className="md:p-8">
-        <div className="y2k-surface md:rounded-3xl md:overflow-hidden md:flex md:min-h-[calc(100vh-4rem)]">
-          <aside className="hidden md:flex w-56 lg:w-60 shrink-0 bg-yellow/55 backdrop-blur-[1px] border-r-2 border-ink flex-col">
-            {sidebarContent}
-          </aside>
-          <main className="flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-5 xl:p-6">
-            <Outlet />
-          </main>
+        <div className="y2k-surface md:rounded-3xl md:overflow-hidden md:flex md:h-[calc(100vh-4rem)] md:min-h-0">
+          <div className="hidden md:flex w-full h-full gap-5 p-5">
+            <aside className="w-56 lg:w-60 shrink-0">
+              <div className="h-full retro-panel-yellow rounded-2xl overflow-hidden flex flex-col">
+                {sidebarContent}
+              </div>
+            </aside>
+            <main className="flex-1 min-w-0">
+              <div className="h-full overflow-y-auto pr-2">
+                <div className="pt-0 p-4 sm:p-5 xl:p-6">
+                  <Outlet />
+                </div>
+              </div>
+            </main>
+          </div>
+
+          <div className="md:hidden">
+            <div className="pt-20 p-4 sm:p-6">
+              <Outlet />
+            </div>
+          </div>
         </div>
       </div>
 
