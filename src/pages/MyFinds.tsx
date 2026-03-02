@@ -1072,16 +1072,16 @@ export default function MyFinds() {
               }
               setDropError('No supported files or links found.');
             }}
-            className={`gap-6 ${
+            className={`grid gap-6 ${
               gridMode === 'compact'
-                ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4'
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
                 : gridMode === 'cozy'
-                  ? 'columns-1 md:columns-2 xl:columns-3'
-                  : 'columns-1 sm:columns-2 xl:columns-3'
-            } mt-4 sm:mt-8 ${isGridDragging ? 'outline outline-2 outline-dashed outline-ink/70 outline-offset-4' : ''}`}
+                  ? 'grid-cols-1 md:grid-cols-2'
+                  : 'grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3'
+            } items-start mt-4 sm:mt-8 ${isGridDragging ? 'outline outline-2 outline-dashed outline-ink/70 outline-offset-4' : ''}`}
           >
             {filtered.map((find) => (
-              <div key={find.id} className="break-inside-avoid mb-6">
+              <div key={find.id}>
                 <FindCard
                   find={find}
                   author={isFriendsView ? (friendAuthor ?? me) : me}
