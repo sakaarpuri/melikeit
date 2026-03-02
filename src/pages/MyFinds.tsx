@@ -13,6 +13,7 @@ const MAX_STORED_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const MAX_STORED_IMAGE_DIMENSION = 1600;
 const QUICK_NOTE_NEW_SECTION_OPTION = '__create_new_section__';
 const DEFAULT_SECTION_NAMES = ['Articles', 'Videos', 'Products', 'Places', 'Recipes', 'Notes'];
+const SECTION_SUBSECTION_SEPARATOR = ' / ';
 
 function handleFromName(name?: string): string {
   const raw = (name ?? '').trim().toLowerCase();
@@ -21,6 +22,23 @@ function handleFromName(name?: string): string {
     .replace(/^_+|_+$/g, '')
     .slice(0, 24);
   return slug || 'me';
+}
+
+function parseSectionLabel(rawName?: string): { section: string; subsection: string } {
+  const name = (rawName ?? '').trim();
+  if (!name) return { section: '', subsection: '' };
+  const [sectionPart, ...rest] = name.split(SECTION_SUBSECTION_SEPARATOR);
+  return {
+    section: (sectionPart ?? '').trim(),
+    subsection: rest.join(SECTION_SUBSECTION_SEPARATOR).trim(),
+  };
+}
+
+function composeSectionLabel(sectionName: string, subsectionName?: string): string {
+  const base = sectionName.trim();
+  const subsection = (subsectionName ?? '').trim();
+  if (!base) return '';
+  return subsection ? `${base}${SECTION_SUBSECTION_SEPARATOR}${subsection}` : base;
 }
 
 function inferFindType(args: { sectionName?: string; url?: string; mimeType?: string }): FindType {
@@ -206,6 +224,7 @@ export default function MyFinds() {
   const [quickNote, setQuickNote] = useState('');
   const [quickNoteSaving, setQuickNoteSaving] = useState(false);
   const [quickNoteSectionId, setQuickNoteSectionId] = useState('');
+  const [quickNoteSubsectionName, setQuickNoteSubsectionName] = useState('');
   const [intakeStatus, setIntakeStatus] = useState('');
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const processIncomingFilesRef = useRef<(files: File[]) => void>(() => {});
@@ -736,13 +755,18 @@ export default function MyFinds() {
       setDropError('');
       const titleLine = raw.split('\n').find((line) => line.trim())?.trim() ?? '';
       const title = titleLine.slice(0, 80) || 'Note';
+      let targetSectionId = quickNoteSectionId || activeSection || '';
+      if (targetSectionId && quickNoteSubsectionName.trim()) {
+        targetSectionId = await ensureSectionIdWithSubsection(targetSectionId, quickNoteSubsectionName);
+      }
       await createFind({
         title,
         description: raw,
         url: '',
-        sectionId: quickNoteSectionId || activeSection || '',
+        sectionId: targetSectionId,
       });
       setQuickNote('');
+      setQuickNoteSubsectionName('');
     } finally {
       setQuickNoteSaving(false);
     }
@@ -769,15 +793,17 @@ export default function MyFinds() {
     setFinds((prev) => prev.filter((find) => find.id !== findId));
   };
 
-  const createSection = async (args: { name: string; visibility: Visibility }): Promise<Section | null> => {
+  const createSection = async (args: { name: string; visibility: Visibility; subsectionName?: string }): Promise<Section | null> => {
     if (!user) return null;
     const supabase = getSupabase();
     if (!supabase) {
       setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
       return null;
     }
-    const name = args.name.trim();
-    if (!name) return null;
+    const name = composeSectionLabel(args.name, args.subsectionName);
+    if (!name.trim()) return null;
+    const existing = mySections.find((section) => section.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if (existing) return existing;
     const { data, error: insertError } = await supabase
       .from('sections')
       .insert({ user_id: user.id, name, visibility: args.visibility })
@@ -791,6 +817,26 @@ export default function MyFinds() {
     setSections((prev) => [...prev, mapped]);
     notifySectionsChanged();
     return mapped;
+  };
+
+  const ensureSectionIdWithSubsection = async (sectionId: string, subsectionName: string): Promise<string> => {
+    const baseSection = mySections.find((section) => section.id === sectionId);
+    if (!baseSection) return sectionId;
+    const { section: baseSectionName } = parseSectionLabel(baseSection.name);
+    const normalizedBase = baseSectionName || baseSection.name;
+    const normalizedSubsection = subsectionName.trim();
+    if (!normalizedSubsection) return sectionId;
+
+    const targetName = composeSectionLabel(normalizedBase, normalizedSubsection);
+    const existing = mySections.find((section) => section.name.trim().toLowerCase() === targetName.toLowerCase());
+    if (existing) return existing.id;
+
+    const created = await createSection({
+      name: normalizedBase,
+      subsectionName: normalizedSubsection,
+      visibility: baseSection.visibility,
+    });
+    return created?.id ?? sectionId;
   };
 
   if (loading) {
@@ -844,16 +890,26 @@ export default function MyFinds() {
                   const value = e.target.value;
                   if (value !== QUICK_NOTE_NEW_SECTION_OPTION) {
                     setQuickNoteSectionId(value);
+                    setQuickNoteSubsectionName('');
                     return;
                   }
-                  const requestedName = window.prompt('New section name');
-                  if (!requestedName?.trim()) {
+                  const requestedSectionName = window.prompt('New section name');
+                  if (!requestedSectionName?.trim()) {
                     setQuickNoteSectionId('');
                     return;
                   }
+                  const requestedSubsectionName = window.prompt('Optional subsection name (leave blank to skip)') ?? '';
                   void (async () => {
-                    const created = await createSection({ name: requestedName, visibility: 'all_friends' });
-                    if (created) setQuickNoteSectionId(created.id);
+                    const created = await createSection({
+                      name: requestedSectionName,
+                      subsectionName: requestedSubsectionName,
+                      visibility: 'all_friends',
+                    });
+                    if (created) {
+                      setQuickNoteSectionId(created.id);
+                      const parsed = parseSectionLabel(created.name);
+                      setQuickNoteSubsectionName(parsed.subsection);
+                    }
                   })();
                 }}
                 className="w-full mb-2 px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink focus:outline-none focus:border-pink"
@@ -866,6 +922,14 @@ export default function MyFinds() {
                 ))}
                 <option value={QUICK_NOTE_NEW_SECTION_OPTION}>+ Add new section</option>
               </select>
+              {!!quickNoteSectionId && (
+                <input
+                  value={quickNoteSubsectionName}
+                  onChange={(e) => setQuickNoteSubsectionName(e.target.value)}
+                  placeholder="Subsection (optional)"
+                  className="w-full mb-2 px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+                />
+              )}
               <textarea
                 value={quickNote}
                 onChange={(e) => setQuickNote(e.target.value)}
@@ -1047,6 +1111,7 @@ export default function MyFinds() {
                   sections={mySections}
                   onUpdate={updateFindInState}
                   onDelete={removeFindFromState}
+                  onEnsureSectionId={ensureSectionIdWithSubsection}
                 />
               </div>
             ))}

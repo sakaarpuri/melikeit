@@ -31,6 +31,7 @@ interface FindCardProps {
   sections?: Section[];
   onUpdate?: (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string; visibility?: Visibility }) => void;
   onDelete?: (findId: string) => void;
+  onEnsureSectionId?: (sectionId: string, subsectionName: string) => Promise<string>;
 }
 
 function getYouTubeVideoId(url?: string): string | null {
@@ -96,7 +97,13 @@ function pickFallbackEmoji(find: Find): string {
   return '✨';
 }
 
-export default function FindCard({ find, author, sections = [], onUpdate, onDelete }: FindCardProps) {
+function getSubsectionFromSectionName(name?: string): string {
+  const raw = (name ?? '').trim();
+  if (!raw.includes(' / ')) return '';
+  return raw.split(' / ').slice(1).join(' / ').trim();
+}
+
+export default function FindCard({ find, author, sections = [], onUpdate, onDelete, onEnsureSectionId }: FindCardProps) {
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
   const [erroredVideoThumbUrl, setErroredVideoThumbUrl] = useState('');
   const [showDetails, setShowDetails] = useState(false);
@@ -108,6 +115,10 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   const [editDescription, setEditDescription] = useState(() => find.description);
   const [editUrl, setEditUrl] = useState(() => find.url ?? '');
   const [editSectionId, setEditSectionId] = useState(() => find.sectionId ?? '');
+  const [editSubsection, setEditSubsection] = useState(() => {
+    const sectionName = sections.find((section) => section.id === find.sectionId)?.name;
+    return getSubsectionFromSectionName(sectionName);
+  });
   const [editVisibility, setEditVisibility] = useState<Visibility>(() => find.visibility);
   const { user } = useAuth();
   const [nowMs, setNowMs] = useState<number>(() => find.createdAt.getTime());
@@ -254,6 +265,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                     setEditDescription(find.description);
                     setEditUrl(find.url ?? '');
                     setEditSectionId(find.sectionId ?? '');
+                    setEditSubsection(getSubsectionFromSectionName(sections.find((section) => section.id === find.sectionId)?.name));
                     setEditVisibility(find.visibility);
                   }}
                   className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
@@ -323,6 +335,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                         setEditDescription(find.description);
                         setEditUrl(find.url ?? '');
                         setEditSectionId(find.sectionId ?? '');
+                        setEditSubsection(getSubsectionFromSectionName(sections.find((section) => section.id === find.sectionId)?.name));
                         setEditVisibility(find.visibility);
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-ink bg-yellow text-[11px] font-black uppercase tracking-wider text-ink"
@@ -360,13 +373,17 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                   setSaving(true);
                   setSaveError('');
                   setSaveStatus('');
+                  let nextSectionId = editSectionId || null;
+                  if (nextSectionId && editSubsection.trim() && onEnsureSectionId) {
+                    nextSectionId = await onEnsureSectionId(nextSectionId, editSubsection.trim());
+                  }
                   const { error } = await supabase
                     .from('finds')
                     .update({
                       title: nextTitle,
                       description: nextDescription,
                       url: nextUrl,
-                      section_id: editSectionId || null,
+                      section_id: nextSectionId,
                       visibility: editVisibility,
                     })
                     .eq('id', find.id)
@@ -382,7 +399,7 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                     title: nextTitle,
                     description: nextDescription,
                     url: nextUrl ?? undefined,
-                    sectionId: editSectionId || undefined,
+                    sectionId: nextSectionId ?? undefined,
                     visibility: editVisibility,
                   });
                   setSaveStatus('Saved.');
@@ -417,10 +434,18 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                   <option value="">No section</option>
                   {sections.map((section) => (
                     <option key={section.id} value={section.id}>
-                      {section.name}
-                    </option>
-                  ))}
+                    {section.name}
+                  </option>
+                ))}
                 </select>
+                {!!editSectionId && (
+                  <input
+                    value={editSubsection}
+                    onChange={(e) => setEditSubsection(e.target.value)}
+                    placeholder="Subsection (optional)"
+                    className="w-full px-2 py-1.5 rounded-none bg-white border-2 border-ink text-xs text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+                  />
+                )}
                 <select
                   value={editVisibility}
                   onChange={(e) => setEditVisibility(e.target.value as Visibility)}
