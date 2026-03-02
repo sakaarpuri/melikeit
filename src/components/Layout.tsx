@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router-dom';
+import { NavLink, Outlet, useSearchParams } from 'react-router-dom';
 import { BookMarked, Menu, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -13,7 +13,6 @@ type ThemeMode = 'default' | 'plain' | 'stealth';
 
 export default function Layout() {
   const { user } = useAuth();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSettings, setShowSettings] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
@@ -48,7 +47,6 @@ export default function Layout() {
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? undefined;
   const selectedFriendId = searchParams.get('view') === 'friends' ? searchParams.get('friend') : null;
   const selectedSectionId = searchParams.get('section');
-  const isHomeRoute = location.pathname === '/';
   const closeMobileNav = () => setMobileNavOpen(false);
 
   useEffect(() => {
@@ -581,7 +579,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen">
       <header className="md:hidden fixed top-0 left-0 right-0 z-30 border-b-2 border-ink bg-yellow/70 backdrop-blur-[1px] px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-black tracking-tight">
           <span className="text-ink">me</span>
@@ -597,11 +595,16 @@ export default function Layout() {
         </button>
       </header>
 
-      <aside className="hidden md:flex w-56 shrink-0 fixed top-8 left-8 h-[calc(100vh-4rem)] z-40 pointer-events-none">
-        <div className="w-full h-full retro-panel-yellow rounded-2xl overflow-hidden flex flex-col pointer-events-auto">
-          {sidebarContent}
+      <div className="md:p-8">
+        <div className="y2k-surface md:rounded-3xl md:overflow-hidden md:flex md:min-h-[calc(100vh-4rem)]">
+          <aside className="hidden md:flex w-56 lg:w-60 shrink-0 bg-yellow/55 backdrop-blur-[1px] border-r-2 border-ink flex-col">
+            {sidebarContent}
+          </aside>
+          <main className="flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-5 xl:p-6">
+            <Outlet />
+          </main>
         </div>
-      </aside>
+      </div>
 
       {mobileNavOpen && (
         <div className="md:hidden fixed inset-0 z-40">
@@ -831,10 +834,6 @@ export default function Layout() {
         </div>
       )}
 
-      {/* Main content */}
-      <main className={`ml-0 flex-1 min-w-0 pt-20 md:pt-0 p-4 sm:p-6 xl:p-8 ${isHomeRoute ? 'md:ml-0' : 'md:ml-[15.5rem]'}`}>
-        <Outlet />
-      </main>
     </div>
   );
 }

@@ -84,6 +84,13 @@ a {
   box-shadow: 6px 6px 0 #111111;
 }
 
+@media (max-width: 767px) {
+  .y2k-surface {
+    border: 0;
+    box-shadow: none;
+  }
+}
+
 html[data-theme="plain"] .y2k-surface {
   background:
     radial-gradient(circle at 18% 22%, rgba(0, 0, 0, 0.06), transparent 42%),

@@ -802,7 +802,7 @@ export default function MyFinds() {
   }
 
   return (
-    <div className="y2k-surface rounded-2xl p-4 sm:p-6">
+    <>
       <div className="min-w-0">
         {isFriendsView && (
           <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
@@ -1071,48 +1071,48 @@ export default function MyFinds() {
         )}
       </div>
 
-      {showModal && (
-        <CreateFindModal
-          sections={mySections}
-          onClose={() => setShowModal(false)}
-          onSubmit={(data) => void createFind(data)}
-        />
-      )}
+    {showModal && (
+      <CreateFindModal
+        sections={mySections}
+        onClose={() => setShowModal(false)}
+        onSubmit={(data) => void createFind(data)}
+      />
+    )}
 
-      {showHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-ink/50" onClick={() => setShowHelp(false)} />
-          <div className="help-pop-in relative w-full max-w-md max-h-[90vh] bg-white/90 backdrop-blur-[1px] border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
-            <div className="px-4 sm:px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
-              <h2 className="text-sm font-black text-ink uppercase tracking-wide">Add finds fast</h2>
-              <button
-                onClick={() => setShowHelp(false)}
-                className="px-2 py-1 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
-              >
-                Close
-              </button>
-            </div>
-            <div className="p-4 sm:p-5 space-y-3 text-sm text-ink/80 overflow-y-auto max-h-[calc(90vh-64px)]">
-              <ul className="list-disc pl-5 space-y-2 text-sm font-medium">
-                <li>Drop screenshots, links, or files anywhere on the grid</li>
-                <li>Paste screenshot: Cmd/Ctrl+V</li>
-                <li>Type/paste a link in +Add Finds and press Enter</li>
-                <li>Quick note: Cmd/Ctrl+Enter</li>
-                <li>Card buttons: D=Details, pencil=Edit</li>
-              </ul>
-              <button
-                onClick={() => {
-                  window.localStorage.setItem('melikeit.helpSeen', '1');
-                  setShowHelp(false);
-                }}
-                className="w-full mt-2 px-4 py-3 rounded-xl border-2 border-ink bg-pink text-ink font-black shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
-              >
-                Got it
-              </button>
-            </div>
+    {showHelp && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-ink/50" onClick={() => setShowHelp(false)} />
+        <div className="help-pop-in relative w-full max-w-md max-h-[90vh] bg-white/90 backdrop-blur-[1px] border-2 border-ink shadow-retro-lg rounded-xl overflow-hidden">
+          <div className="px-4 sm:px-5 py-4 bg-yellow border-b-2 border-ink flex items-center justify-between">
+            <h2 className="text-sm font-black text-ink uppercase tracking-wide">Add finds fast</h2>
+            <button
+              onClick={() => setShowHelp(false)}
+              className="px-2 py-1 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink hover:bg-yellow transition-colors"
+            >
+              Close
+            </button>
+          </div>
+          <div className="p-4 sm:p-5 space-y-3 text-sm text-ink/80 overflow-y-auto max-h-[calc(90vh-64px)]">
+            <ul className="list-disc pl-5 space-y-2 text-sm font-medium">
+              <li>Drop screenshots, links, or files anywhere on the grid</li>
+              <li>Paste screenshot: Cmd/Ctrl+V</li>
+              <li>Type/paste a link in +Add Finds and press Enter</li>
+              <li>Quick note: Cmd/Ctrl+Enter</li>
+              <li>Card buttons: D=Details, pencil=Edit</li>
+            </ul>
+            <button
+              onClick={() => {
+                window.localStorage.setItem('melikeit.helpSeen', '1');
+                setShowHelp(false);
+              }}
+              className="w-full mt-2 px-4 py-3 rounded-xl border-2 border-ink bg-pink text-ink font-black shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
+            >
+              Got it
+            </button>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+    </>
   );
 }
