@@ -15,6 +15,7 @@ const QUICK_NOTE_NEW_SECTION_OPTION = '__create_new_section__';
 const DEFAULT_SECTION_NAMES = ['Articles', 'Videos', 'Products', 'Places', 'Recipes', 'Notes'];
 const SECTION_SUBSECTION_SEPARATOR = ' / ';
 const DROP_ANYWHERE_TOAST_KEY = 'melikeit.dropAnywhereToastSeen';
+const STORAGE_BUCKET = ((import.meta.env.VITE_SUPABASE_STORAGE_BUCKET as string | undefined)?.trim() || 'find_images');
 
 function handleFromName(name?: string): string {
   const raw = (name ?? '').trim().toLowerCase();
@@ -40,6 +41,14 @@ function composeSectionLabel(sectionName: string, subsectionName?: string): stri
   const subsection = (subsectionName ?? '').trim();
   if (!base) return '';
   return subsection ? `${base}${SECTION_SUBSECTION_SEPARATOR}${subsection}` : base;
+}
+
+function toStorageErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  if (message.toLowerCase().includes('bucket not found')) {
+    return `Storage bucket "${STORAGE_BUCKET}" was not found. Create it in Supabase Storage (or set VITE_SUPABASE_STORAGE_BUCKET).`;
+  }
+  return message || 'Unexpected storage error.';
 }
 
 function inferFindType(args: { sectionName?: string; url?: string; mimeType?: string }): FindType {
@@ -422,7 +431,7 @@ export default function MyFinds() {
     const paths = typedFinds.flatMap((f) => [f.image_path, f.preview_path, f.file_path]).filter((p): p is string => !!p);
     const signedMap = new Map<string, string>();
     if (paths.length > 0) {
-      const { data } = await supabase.storage.from('find_images').createSignedUrls(paths, 60 * 60);
+      const { data } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrls(paths, 60 * 60);
       (data ?? []).forEach((entry) => {
         if (entry.path && entry.signedUrl) signedMap.set(entry.path, entry.signedUrl);
       });
@@ -452,11 +461,11 @@ export default function MyFinds() {
     if (!supabase) throw new Error('Supabase not configured');
     const optimizedFile = await optimizeImageForUpload(file);
     const path = `${user.id}/${crypto.randomUUID()}.webp`;
-    const { error: uploadError } = await supabase.storage.from('find_images').upload(path, optimizedFile, {
+    const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, optimizedFile, {
       upsert: false,
       contentType: 'image/webp',
     });
-    if (uploadError) throw uploadError;
+    if (uploadError) throw new Error(toStorageErrorMessage(uploadError));
     return path;
   };
 
@@ -469,11 +478,11 @@ export default function MyFinds() {
       .replace(/\s+/g, '_')
       .slice(0, 96);
     const path = `${user.id}/files/${crypto.randomUUID()}-${safeName}`;
-    const { error: uploadError } = await supabase.storage.from('find_images').upload(path, file, {
+    const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
       upsert: false,
       contentType: file.type || 'application/octet-stream',
     });
-    if (uploadError) throw uploadError;
+    if (uploadError) throw new Error(toStorageErrorMessage(uploadError));
     return path;
   };
 
@@ -609,11 +618,11 @@ export default function MyFinds() {
     let signedFileUrl: string | undefined;
     const pathToSign = row.image_path ?? row.preview_path;
     if (pathToSign) {
-      const { data: signed } = await supabase.storage.from('find_images').createSignedUrl(pathToSign, 60 * 60);
+      const { data: signed } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(pathToSign, 60 * 60);
       signedImageUrl = signed?.signedUrl;
     }
     if (row.file_path) {
-      const { data: signedFile } = await supabase.storage.from('find_images').createSignedUrl(row.file_path, 60 * 60);
+      const { data: signedFile } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(row.file_path, 60 * 60);
       signedFileUrl = signedFile?.signedUrl;
     }
     setFinds((prev) => [mapFind(row, signedImageUrl, signedFileUrl), ...prev]);

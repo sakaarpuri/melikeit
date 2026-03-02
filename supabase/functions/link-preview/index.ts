@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const storageBucket = Deno.env.get('SUPABASE_STORAGE_BUCKET') ?? 'find_images';
     if (!supabaseUrl || !supabaseAnonKey) {
       return new Response(JSON.stringify({ error: 'Supabase environment is not configured.' }), {
         status: 500,
@@ -182,7 +183,7 @@ Deno.serve(async (req) => {
     const imageBuffer = await imageResponse.arrayBuffer();
     const previewPath = `${user.id}/link_previews/${crypto.randomUUID()}.${outputExt}`;
     const { error: uploadError } = await supabase.storage
-      .from('find_images')
+      .from(storageBucket)
       .upload(previewPath, imageBuffer, {
         upsert: false,
         contentType: outputContentType,
