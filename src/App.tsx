@@ -4,6 +4,7 @@ import MyFinds from './pages/MyFinds';
 import AuthCallback from './pages/AuthCallback';
 import DesignSoftPreview from './pages/DesignSoftPreview';
 import DesignSoftRetroPreview from './pages/DesignSoftRetroPreview';
+import DesignSoftRetroPreviewV1 from './pages/DesignSoftRetroPreviewV1';
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <Routes>
         <Route path="design/soft" element={<DesignSoftPreview />} />
         <Route path="design/soft-retro" element={<DesignSoftRetroPreview />} />
+        <Route path="design/soft-retro-v1" element={<DesignSoftRetroPreviewV1 />} />
         <Route element={<Layout />}>
           <Route index element={<MyFinds />} />
           <Route path="auth/callback" element={<AuthCallback />} />
