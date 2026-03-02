@@ -705,6 +705,32 @@ export default function MyFinds() {
     };
   }, [isFriendsView]);
 
+  useEffect(() => {
+    const onWindowDragOver = (event: DragEvent) => {
+      if (event.defaultPrevented) return;
+      if (!event.dataTransfer) return;
+      if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+    };
+
+    const onWindowDrop = (event: DragEvent) => {
+      if (event.defaultPrevented) return;
+      const files = event.dataTransfer?.files;
+      if (!files?.length) return;
+      event.preventDefault();
+      if (isFriendsView) return;
+      processIncomingFilesRef.current(Array.from(files));
+    };
+
+    window.addEventListener('dragover', onWindowDragOver);
+    window.addEventListener('drop', onWindowDrop);
+    return () => {
+      window.removeEventListener('dragover', onWindowDragOver);
+      window.removeEventListener('drop', onWindowDrop);
+    };
+  }, [isFriendsView]);
+
   const normalizeUrl = (raw: string): string | null => {
     const trimmed = raw.trim();
     if (!trimmed) return null;
