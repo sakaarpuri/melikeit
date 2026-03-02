@@ -846,7 +846,7 @@ export default function MyFinds() {
 
       <div className="flex-1 min-w-0">
         {isFriendsView && (
-          <div className="mb-6 p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
             <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Friends View</p>
             <p className="text-sm font-medium text-ink leading-snug">
               Showing finds shared to friends by {friendAuthor?.displayName ?? 'your friend'}.
@@ -855,7 +855,7 @@ export default function MyFinds() {
         )}
 
         {error && (
-          <div className="mb-5 p-3 bg-white border-2 border-ink rounded-xl shadow-retro">
+          <div className="mb-4 sm:mb-5 p-3 bg-white border-2 border-ink rounded-xl shadow-retro">
             <p className="text-sm font-bold text-ink">Error: {error}</p>
             {error.includes("Could not find the table 'public.sections'") && (
               <p className="text-xs text-ink/70 font-medium mt-2">
@@ -865,7 +865,7 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-6 p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
+        <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
           <span className="text-2xl shrink-0">:|</span>
           <div>
             <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
@@ -874,7 +874,7 @@ export default function MyFinds() {
         </div>
 
         {!isFriendsView && (
-          <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:justify-end">
+          <div className="mb-4 sm:mb-6 flex flex-col gap-2 sm:gap-3 lg:flex-row lg:justify-end">
             <div className="w-full lg:w-[340px] bg-white border-2 border-ink rounded-xl shadow-retro p-3">
               <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
               <select
@@ -992,7 +992,7 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="mb-4 sm:mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
           <p className="text-xs font-black text-ink/50 uppercase tracking-widest">
             {finds.length} finds{isFriendsView ? ` from ${friendAuthor?.displayName ?? 'friend'}` : ''}
           </p>
@@ -1006,7 +1006,7 @@ export default function MyFinds() {
             >
               ? Help
             </button>
-            <label className="text-[11px] font-black uppercase tracking-wider text-ink/60">Sort</label>
+            <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-ink/60">Sort</label>
             <select
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as 'newest' | 'oldest' | 'most_liked')}
@@ -1018,7 +1018,7 @@ export default function MyFinds() {
               <option value="most_liked">Most liked</option>
             </select>
 
-            <label className="text-[11px] font-black uppercase tracking-wider text-ink/60 ml-1">Grid</label>
+            <label className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-ink/60 ml-1">Grid</label>
             <select
               value={gridMode}
               onChange={(e) => setGridMode(e.target.value as 'cozy' | 'standard' | 'compact')}
@@ -1076,7 +1076,7 @@ export default function MyFinds() {
                 : gridMode === 'cozy'
                   ? 'columns-1 md:columns-2 xl:columns-3'
                   : 'columns-1 sm:columns-2 xl:columns-3'
-            } mt-8 ${isGridDragging ? 'outline outline-2 outline-dashed outline-ink/70 outline-offset-4' : ''}`}
+            } mt-4 sm:mt-8 ${isGridDragging ? 'outline outline-2 outline-dashed outline-ink/70 outline-offset-4' : ''}`}
           >
             {filtered.map((find) => (
               <div key={find.id} className="break-inside-avoid mb-6">
