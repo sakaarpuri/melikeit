@@ -3,9 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import FindCard from '../components/FindCard';
 import CreateFindModal from '../components/CreateFindModal';
 import type { Find, FindType, Section, User, Visibility } from '../data/mockData';
+import { JOKES_OF_THE_DAY } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
 
+const todaysJoke = JOKES_OF_THE_DAY[new Date().getDate() % JOKES_OF_THE_DAY.length];
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_STORED_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const MAX_STORED_IMAGE_DIMENSION = 1600;
@@ -931,10 +933,17 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-3 sm:mb-4 flex justify-end">
-          <p className="w-full lg:w-[692px] text-sm sm:text-base font-black italic text-ink leading-snug">
-            Your bookmarks, YouTube favorites, screenshots, and random links can all live here, so you actually open them again in real life (instead of letting them disappear into tab-graveyard history).
+        <div className="mb-3 sm:mb-4 grid gap-2 lg:gap-4 lg:grid-cols-[1fr_692px] items-start">
+          <p className="text-xs sm:text-sm font-medium italic text-ink/60 leading-snug pt-1">
+            Your bookmarks, YouTube favorites, screenshots, and random links can all live here, so you actually open them again in real life.
           </p>
+          <div className="w-full p-3 sm:p-4 retro-surface-soft rounded-xl flex items-start gap-3">
+            <span className="text-2xl shrink-0">:|</span>
+            <div>
+              <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
+              <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
+            </div>
+          </div>
         </div>
 
         {!isFriendsView && (
