@@ -26,27 +26,27 @@ html[data-theme="plain"] {
   --chrome: 248 248 248;
   --ink: 17 17 17;
 
-  --pink: 17 17 17;
-  --pink-dark: 17 17 17;
-  --cyan: 17 17 17;
-  --cyan-dark: 17 17 17;
-  --yellow: 242 242 242;
-  --yellow-dark: 230 230 230;
+  --pink: 214 214 214;
+  --pink-dark: 180 180 180;
+  --cyan: 223 223 223;
+  --cyan-dark: 188 188 188;
+  --yellow: 236 236 236;
+  --yellow-dark: 212 212 212;
 }
 
 html[data-theme="stealth"] {
-  --page-bg: 10 10 12;
-  --paper: 18 18 22;
-  --surface: 26 26 32;
-  --chrome: 22 22 28;
-  --ink: 236 236 236;
+  --page-bg: 12 13 16;
+  --paper: 22 24 30;
+  --surface: 30 34 42;
+  --chrome: 26 29 36;
+  --ink: 236 238 243;
 
-  --pink: 190 76 128;
-  --pink-dark: 170 60 110;
-  --cyan: 0 170 180;
-  --cyan-dark: 0 140 150;
-  --yellow: 190 170 0;
-  --yellow-dark: 165 145 0;
+  --pink: 126 98 118;
+  --pink-dark: 104 80 98;
+  --cyan: 84 124 138;
+  --cyan-dark: 66 103 115;
+  --yellow: 100 106 88;
+  --yellow-dark: 82 88 72;
 }
 
 html {
