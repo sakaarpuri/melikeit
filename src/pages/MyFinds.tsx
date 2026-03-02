@@ -641,14 +641,23 @@ export default function MyFinds() {
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
       if (isFriendsView) return;
-      const items = Array.from(event.clipboardData?.items ?? []);
-      const imageFiles = items
-        .filter((item) => item.type.startsWith('image/'))
+      const clipboard = event.clipboardData;
+      if (!clipboard) return;
+      const items = Array.from(clipboard.items ?? []);
+      const filesFromItems = items
+        .filter((item) => item.kind === 'file')
         .map((item) => item.getAsFile())
         .filter((file): file is File => !!file);
-      if (imageFiles.length === 0) return;
+      const filesFromClipboard = Array.from(clipboard.files ?? []);
+      const dedupedByKey = new Map<string, File>();
+      [...filesFromItems, ...filesFromClipboard].forEach((file) => {
+        const key = [file.name, file.size, file.type, file.lastModified].join('|');
+        dedupedByKey.set(key, file);
+      });
+      const pastedFiles = Array.from(dedupedByKey.values());
+      if (pastedFiles.length === 0) return;
       event.preventDefault();
-      processIncomingFilesRef.current(imageFiles);
+      processIncomingFilesRef.current(pastedFiles);
     };
 
     window.addEventListener('paste', onPaste);
