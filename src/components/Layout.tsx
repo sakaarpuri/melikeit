@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet, useSearchParams } from 'react-router-dom';
 import { BookMarked, Menu, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
@@ -10,6 +10,16 @@ function isStrongEnoughPassword(password: string): boolean {
 }
 
 type ThemeMode = 'default' | 'plain' | 'stealth';
+
+function parseSectionLabel(rawName?: string): { parent: string; child: string } {
+  const name = (rawName ?? '').trim();
+  if (!name) return { parent: '', child: '' };
+  const [parentPart, ...rest] = name.split(' / ');
+  return {
+    parent: (parentPart ?? '').trim(),
+    child: rest.join(' / ').trim(),
+  };
+}
 
 export default function Layout() {
   const { user } = useAuth();
@@ -23,6 +33,7 @@ export default function Layout() {
   });
   const [friends, setFriends] = useState<Array<{ id: string; fullName: string; avatarUrl?: string }>>([]);
   const [sections, setSections] = useState<Section[]>([]);
+  const [expandedParent, setExpandedParent] = useState('');
   const [sectionsLoading, setSectionsLoading] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'sections' | 'friends'>('sections');
   const [friendsLoading, setFriendsLoading] = useState(false);
@@ -47,6 +58,21 @@ export default function Layout() {
   const avatarUrl = (user?.user_metadata?.avatar_url as string | undefined) ?? undefined;
   const selectedFriendId = searchParams.get('view') === 'friends' ? searchParams.get('friend') : null;
   const selectedSectionId = searchParams.get('section');
+  const sectionGroups = useMemo(() => {
+    const byParent = new Map<string, { parentName: string; parentId?: string; children: Array<{ id: string; name: string }> }>();
+    sections.forEach((section) => {
+      const { parent, child } = parseSectionLabel(section.name);
+      const parentName = parent || section.name;
+      const existing = byParent.get(parentName) ?? { parentName, children: [] };
+      if (child) {
+        existing.children.push({ id: section.id, name: child });
+      } else {
+        existing.parentId = section.id;
+      }
+      byParent.set(parentName, existing);
+    });
+    return Array.from(byParent.values());
+  }, [sections]);
   const closeMobileNav = () => setMobileNavOpen(false);
 
   useEffect(() => {
@@ -153,6 +179,14 @@ export default function Layout() {
     return () => window.removeEventListener('melikeit:sections-changed', onSectionsChanged as EventListener);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!selectedSectionId) return;
+    const matchingSection = sections.find((section) => section.id === selectedSectionId);
+    if (!matchingSection) return;
+    const { parent } = parseSectionLabel(matchingSection.name);
+    if (parent) setExpandedParent(parent);
+  }, [sections, selectedSectionId]);
 
   useEffect(() => {
     const token = searchParams.get('friendInvite');
@@ -463,21 +497,55 @@ export default function Layout() {
             All Finds
           </button>
           {sectionsLoading && <p className="text-[11px] font-semibold text-ink/60 px-1 py-1">Loading sections…</p>}
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => openSection(section.id)}
-              className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm font-black transition-all truncate ${
-                selectedSectionId === section.id
-                  ? 'bg-pink text-ink border-ink shadow-retro'
-                  : 'retro-surface-muted text-ink border-ink hover:bg-white/80'
-              }`}
-              title={section.name}
-            >
-              {section.name}
-            </button>
-          ))}
+          {sectionGroups.map((group) => {
+            const hasChildren = group.children.length > 0;
+            const isParentActive = group.parentId ? selectedSectionId === group.parentId : false;
+            const hasActiveChild = group.children.some((child) => child.id === selectedSectionId);
+            const isExpanded = expandedParent === group.parentName;
+            return (
+              <div key={group.parentName} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (hasChildren) {
+                      setExpandedParent((prev) => (prev === group.parentName ? '' : group.parentName));
+                    }
+                    if (group.parentId) openSection(group.parentId);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg border-2 text-sm font-black transition-all truncate flex items-center justify-between gap-2 ${
+                    isParentActive || hasActiveChild
+                      ? 'bg-pink text-ink border-ink shadow-retro'
+                      : 'retro-surface-muted text-ink border-ink hover:bg-white/80'
+                  }`}
+                  title={group.parentName}
+                >
+                  <span className="truncate">{group.parentName}</span>
+                  {hasChildren && (
+                    <span className="text-[10px] font-black">{isExpanded ? '−' : '+'}</span>
+                  )}
+                </button>
+                {hasChildren && isExpanded && (
+                  <div className="pl-3 space-y-1">
+                    {group.children.map((child) => (
+                      <button
+                        key={child.id}
+                        type="button"
+                        onClick={() => openSection(child.id)}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg border-2 text-xs font-black transition-all truncate ${
+                          selectedSectionId === child.id
+                            ? 'bg-cyan text-ink border-ink shadow-retro'
+                            : 'retro-surface-muted text-ink border-ink hover:bg-white/80'
+                        }`}
+                        title={child.name}
+                      >
+                        {child.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="px-3 mt-3 space-y-2 overflow-y-auto max-h-[38vh]">
