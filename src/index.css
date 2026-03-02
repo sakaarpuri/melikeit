@@ -198,7 +198,7 @@ html[data-theme="stealth"] .bg-\[\#f2f2f2\] { background-color: rgb(var(--surfac
 }
 
 .retro-panel-yellow {
-  background-color: rgb(var(--yellow) / 0.6);
+  background-color: rgb(var(--yellow) / 0.42);
   backdrop-filter: blur(1px);
   border: 2px solid rgb(var(--ink));
   box-shadow: 3px 3px 0 rgb(var(--ink));

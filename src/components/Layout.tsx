@@ -416,7 +416,7 @@ export default function Layout() {
           className={({ isActive }) =>
             `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-all border-2 ${
               isActive && !selectedSectionId && !selectedFriendId
-                ? 'bg-pink border-ink text-ink shadow-retro'
+                ? 'bg-yellow/55 border-ink text-ink shadow-retro'
                 : 'border-transparent text-ink hover:border-ink hover:bg-white/50'
             }`
           }
