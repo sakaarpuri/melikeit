@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Grid3X3, Link2, List, Plus, StickyNote } from 'lucide-react';
+import { Grid3X3, Link2, List, Plus, StickyNote, X } from 'lucide-react';
 import type { Find, FindType } from '../data/mockData';
-import { finds as mockFinds, sections as mockSections, users as mockUsers } from '../data/mockData';
+import { friendIds, finds as mockFinds, sections as mockSections, users as mockUsers } from '../data/mockData';
 
 type CardDensity = 'cozy' | 'standard' | 'compact';
 
@@ -74,6 +74,40 @@ function pickEmoji(find: Find): string {
 
   if (find.description) return '🗒️';
   return '✨';
+}
+
+function RetroModal(props: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
+        onClick={props.onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative w-full max-w-lg border-2 border-ink bg-white/90 shadow-retro rounded-xl overflow-hidden animate-[pop_140ms_ease-out]"
+        style={{ transformOrigin: '50% 60%' }}
+      >
+        <div className="flex items-center justify-between gap-3 border-b-2 border-ink bg-yellow/80 px-4 py-3">
+          <div className="text-sm font-black uppercase tracking-wider text-ink">{props.title}</div>
+          <button
+            type="button"
+            className="h-8 w-8 grid place-items-center border-2 border-ink bg-white shadow-retro"
+            onClick={props.onClose}
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="p-4 text-sm text-ink">{props.children}</div>
+      </div>
+      <style>{`
+        @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      `}</style>
+    </div>
+  );
 }
 
 function SoftRetroCard({ find }: { find: Find }) {
@@ -160,6 +194,16 @@ export default function DesignSoftRetroPreviewV1() {
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [density, setDensity] = useState<CardDensity>('standard');
   const [query, setQuery] = useState('');
+  const [showFriends, setShowFriends] = useState(false);
+
+  const friends = useMemo(() => {
+    return friendIds.map((id) => mockUsers.find((u) => u.id === id)).filter(Boolean) as Array<{
+      id: string;
+      displayName: string;
+      username: string;
+      avatarUrl: string;
+    }>;
+  }, []);
 
   const sections = useMemo(() => {
     const base = mockSections.filter((s) => s.userId === 'u1');
@@ -212,6 +256,20 @@ export default function DesignSoftRetroPreviewV1() {
             </div>
 
             <div className="mt-6 pt-4 border-t-2 border-ink/15">
+              <button
+                type="button"
+                onClick={() => setShowFriends(true)}
+                className="w-full text-left border-2 border-ink bg-white/70 shadow-retro rounded-xl px-3 py-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-ink/70">Friends</span>
+                  <span className="text-[11px] font-black text-ink">{friends.length}</span>
+                </div>
+                <div className="text-[11px] font-bold text-ink/55 mt-0.5">See names + invite</div>
+              </button>
+            </div>
+
+            <div className="mt-4 pt-4 border-t-2 border-ink/15">
               <p className="text-xs font-black text-ink uppercase tracking-wide mb-1">House rules</p>
               <p className="text-xs text-ink/70 leading-snug font-medium">
                 No memes. No forwards. No reposts. <span className="text-pink font-black">We will judge you.</span>
@@ -305,7 +363,25 @@ export default function DesignSoftRetroPreviewV1() {
           </div>
         </main>
       </div>
+
+      {showFriends ? (
+        <RetroModal title="Friends" onClose={() => setShowFriends(false)}>
+          <div className="text-sm font-semibold text-ink/80">
+            In the real app, friends live in the left yellow sidebar as a button. In this preview layout, they open from the sidebar card.
+          </div>
+          <div className="mt-3 space-y-2">
+            {friends.map((friend) => (
+              <div key={friend.id} className="flex items-center gap-3 border-2 border-ink/20 bg-white/70 rounded-xl p-3">
+                <img src={friend.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-ink/20 bg-white" />
+                <div className="min-w-0">
+                  <div className="text-sm font-black truncate">{friend.displayName}</div>
+                  <div className="text-xs font-bold text-ink/55 truncate">@{friend.username}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </RetroModal>
+      ) : null}
     </div>
   );
 }
-
