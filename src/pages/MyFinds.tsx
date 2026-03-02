@@ -866,7 +866,7 @@ export default function MyFinds() {
         )}
 
         <div className="mb-4 sm:mb-6 flex justify-end">
-          <div className="w-full lg:w-[692px] p-3 sm:p-4 bg-cyan/45 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
+          <div className="w-full lg:w-[692px] p-3 sm:p-4 retro-surface-soft rounded-xl flex items-start gap-3">
             <span className="text-2xl shrink-0">:|</span>
             <div>
               <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
