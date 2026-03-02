@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Grid3X3, List, Plus } from 'lucide-react';
+import { Grid3X3, List } from 'lucide-react';
 import type { Find, FindType } from '../data/mockData';
 import { currentUserId, friendIds, finds as seedFinds, sections as seedSections, users as mockUsers } from '../data/mockData';
 
@@ -358,15 +358,11 @@ export default function DesignSoftRetroPreviewV1() {
               </h2>
               <p className="text-sm text-ink/60 mt-1 font-medium">Calm surfaces, chunky lines, still early-2000s.</p>
             </div>
-            <button className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-pink px-4 py-2.5 text-sm font-black text-ink border-2 border-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all">
-              <Plus size={16} />
-              Add Find
-            </button>
           </div>
 
           {/* Keep the existing app’s “Quick note” and “+Add Finds” flow (preview-only behavior) */}
-          <div className="mt-6 grid gap-3 lg:grid-cols-2">
-            <div className="bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-3">
+          <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:justify-end">
+            <div className="bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-3 w-full lg:w-[340px]">
               <div className="text-xs font-black uppercase tracking-wider text-ink">Quick note</div>
               <div className="mt-2 space-y-2">
                 <select
@@ -408,7 +404,7 @@ export default function DesignSoftRetroPreviewV1() {
               </div>
             </div>
 
-            <div className="bg-pink/70 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-3">
+            <div className="bg-pink/70 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-3 w-full lg:w-[340px]">
               <div className="text-right">
                 <div className="text-base font-black text-ink">+Add Finds</div>
                 <div className="text-[11px] font-black text-ink/70 leading-snug">
