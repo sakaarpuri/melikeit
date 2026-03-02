@@ -845,10 +845,37 @@ export default function MyFinds() {
       )}
 
       <div className="flex-1 min-w-0">
+        {isFriendsView && (
+          <div className="mb-6 p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
+            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Friends View</p>
+            <p className="text-sm font-medium text-ink leading-snug">
+              Showing finds shared to friends by {friendAuthor?.displayName ?? 'your friend'}.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-5 p-3 bg-white border-2 border-ink rounded-xl shadow-retro">
+            <p className="text-sm font-bold text-ink">Error: {error}</p>
+            {error.includes("Could not find the table 'public.sections'") && (
+              <p className="text-xs text-ink/70 font-medium mt-2">
+                This usually means the database schema hasn’t been created yet. Run `supabase/schema.sql` in your Supabase SQL Editor, then refresh.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mb-6 p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
+          <span className="text-2xl shrink-0">:|</span>
+          <div>
+            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
+            <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
+          </div>
+        </div>
+
         {!isFriendsView && (
-        <div className="flex justify-end mb-6">
-          <div className="flex flex-col sm:flex-row items-stretch gap-4 w-full sm:w-auto">
-            <div className="w-full sm:w-[320px] bg-white border-2 border-ink rounded-xl shadow-retro p-4">
+          <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:justify-end">
+            <div className="w-full lg:w-[340px] bg-white border-2 border-ink rounded-xl shadow-retro p-3">
               <p className="text-xs font-black text-ink uppercase tracking-wider mb-2">Quick note</p>
               <select
                 value={quickNoteSectionId}
@@ -868,7 +895,7 @@ export default function MyFinds() {
                     if (created) setQuickNoteSectionId(created.id);
                   })();
                 }}
-                className="w-full mb-2 px-3 py-2 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink focus:outline-none focus:border-pink"
+                className="w-full mb-2 px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink focus:outline-none focus:border-pink"
               >
                 <option value="">No section</option>
                 {mySections.map((section) => (
@@ -882,8 +909,8 @@ export default function MyFinds() {
                 value={quickNote}
                 onChange={(e) => setQuickNote(e.target.value)}
                 placeholder="Type a note… (Cmd/Ctrl + Enter to add)"
-                rows={3}
-                className="w-full resize-none rounded-lg border-2 border-ink bg-white px-3 py-2 text-sm font-semibold text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+                rows={2}
+                className="w-full min-h-[70px] resize-none rounded-lg border-2 border-ink bg-white px-2.5 py-1.5 text-sm font-semibold text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
                 onKeyDown={(e) => {
                   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                     e.preventDefault();
@@ -891,97 +918,77 @@ export default function MyFinds() {
                   }
                 }}
               />
-              <div className="mt-3 flex justify-end">
+              <div className="mt-2 flex justify-end">
                 <button
                   type="button"
                   onClick={() => void submitQuickNote()}
                   disabled={quickNoteSaving || !quickNote.trim()}
-                  className="px-3 py-2 rounded-lg border-2 border-ink bg-yellow text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
+                  className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-yellow text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all disabled:opacity-60 disabled:hover:translate-x-0 disabled:hover:translate-y-0"
                 >
                   {quickNoteSaving ? 'Adding…' : 'Add note'}
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-col items-stretch w-full sm:w-auto">
-            <input
-              ref={uploadInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = e.target.files;
-                if (files?.length) void processIncomingFiles(files);
-                e.currentTarget.value = '';
-              }}
-            />
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragging(false);
-                const files = e.dataTransfer.files;
-                if (files?.length) void processIncomingFiles(files);
-              }}
-              className={`px-5 py-4 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-full sm:w-[460px] ${
-                isDragging
-                  ? 'bg-cyan text-ink -translate-x-0.5 -translate-y-0.5 shadow-retro-lg'
-                  : 'bg-pink text-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg'
-              }`}
-            >
-              <textarea
-                value={quickLink}
-                onChange={(e) => setQuickLink(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void submitQuickLink();
-                  }
+            <div className="flex flex-col items-stretch w-full lg:w-[340px]">
+              <input
+                ref={uploadInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files?.length) void processIncomingFiles(files);
+                  e.currentTarget.value = '';
                 }}
-                placeholder={"+Add Finds\npaste links / drag files here\npress Enter to add"}
-                rows={3}
-                className="w-full min-h-[88px] resize-none rounded-lg border-2 border-ink/70 bg-white/75 px-3 py-2 text-right text-sm font-black leading-tight text-ink placeholder:text-ink/70 focus:outline-none focus:border-ink"
               />
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const files = e.dataTransfer.files;
+                  if (files?.length) void processIncomingFiles(files);
+                }}
+                className={`p-3 rounded-xl border-2 border-ink text-sm font-black shadow-retro transition-all w-full ${
+                  isDragging
+                    ? 'bg-cyan/45 text-ink -translate-x-0.5 -translate-y-0.5 shadow-retro-lg'
+                    : 'bg-pink/35 text-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg'
+                }`}
+              >
+                <textarea
+                  value={quickLink}
+                  onChange={(e) => setQuickLink(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void submitQuickLink();
+                    }
+                  }}
+                  placeholder={"+Add Finds\npaste links / drag files here\npress Enter to add"}
+                  rows={3}
+                  className="w-full min-h-[72px] resize-none rounded-lg border-2 border-ink/70 bg-white/75 px-2.5 py-1.5 text-right text-sm font-black leading-tight text-ink placeholder:text-ink/70 focus:outline-none focus:border-ink"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(true)}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
+                  >
+                    Add manually
+                  </button>
+                </div>
+              </div>
+              {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
+              {intakeStatus && <p className="text-xs text-ink/70 mt-1 font-bold">{intakeStatus}</p>}
             </div>
-            {dropError && <p className="text-xs text-pink-dark mt-1 font-bold">{dropError}</p>}
-            {intakeStatus && <p className="text-xs text-ink/70 mt-1 font-bold">{intakeStatus}</p>}
-            </div>
-          </div>
-        </div>
-        )}
-
-        {isFriendsView && (
-          <div className="mb-6 p-4 bg-yellow border-2 border-ink rounded-xl shadow-retro">
-            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Friends View</p>
-            <p className="text-sm font-medium text-ink leading-snug">
-              Showing finds shared to friends by {friendAuthor?.displayName ?? 'your friend'}.
-            </p>
-          </div>
-        )}
-
-        <div className="mb-6 p-4 bg-cyan border-2 border-ink rounded-xl shadow-retro flex items-start gap-3">
-          <span className="text-2xl shrink-0">:|</span>
-          <div>
-            <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
-            <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-5 p-3 bg-white border-2 border-ink rounded-xl shadow-retro">
-            <p className="text-sm font-bold text-ink">Error: {error}</p>
-            {error.includes("Could not find the table 'public.sections'") && (
-              <p className="text-xs text-ink/70 font-medium mt-2">
-                This usually means the database schema hasn’t been created yet. Run `supabase/schema.sql` in your Supabase SQL Editor, then refresh.
-              </p>
-            )}
           </div>
         )}
 
