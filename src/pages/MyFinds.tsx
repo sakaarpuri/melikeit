@@ -870,14 +870,10 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-4 sm:mb-6 flex justify-end">
-          <div className="w-full lg:w-[692px] p-3 sm:p-4 retro-surface-soft rounded-xl flex items-start gap-3">
-            <span className="text-2xl shrink-0">:|</span>
-            <div>
-              <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
-              <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
-            </div>
-          </div>
+        <div className="mb-3 sm:mb-4 flex justify-end">
+          <p className="w-full lg:w-[692px] text-sm sm:text-base font-black italic text-ink leading-snug">
+            Joke of the day: {todaysJoke}
+          </p>
         </div>
 
         {!isFriendsView && (
