@@ -634,6 +634,10 @@ export default function MyFinds() {
         setDropError('File is too large. Maximum size is 10MB.');
         return false;
       }
+      if (file.type.startsWith('video/')) {
+        setDropError('Video uploads are disabled for now. Add a video link instead (e.g. YouTube).');
+        return false;
+      }
       setDropError('');
       if (file.type.startsWith('image/')) {
         await createFind({ title: file.name.replace(/\.[^/.]+$/, ''), description: '', url: '', sectionId: activeSection ?? '', imageFile: file });
