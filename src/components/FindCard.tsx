@@ -103,11 +103,19 @@ function getSubsectionFromSectionName(name?: string): string {
   return raw.split(' / ').slice(1).join(' / ').trim();
 }
 
+function openInNewTab(url: string) {
+  const next = url.trim();
+  if (!next) return;
+  const win = window.open(next, '_blank', 'noopener,noreferrer');
+  if (!win) window.location.assign(next);
+}
+
 export default function FindCard({ find, author, sections = [], onUpdate, onDelete, onEnsureSectionId }: FindCardProps) {
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
   const [erroredVideoThumbUrl, setErroredVideoThumbUrl] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [inlineYouTube, setInlineYouTube] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -167,8 +175,27 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
         </div>
       </div>
 
-      <div className={`relative border-b-2 border-ink ${isFallbackMedia ? 'bg-[#f2f2f2]' : 'bg-black'}`}>
-        {find.imageUrl ? (
+      <div
+        className={`relative border-b-2 border-ink ${isFallbackMedia ? 'bg-[#f2f2f2]' : 'bg-black'}`}
+        onDoubleClick={() => {
+          if (find.fileUrl) {
+            openInNewTab(find.fileUrl);
+            return;
+          }
+          if (find.url) openInNewTab(find.url);
+        }}
+      >
+        {youtubeId && inlineYouTube ? (
+          <div className="w-full h-52 bg-black">
+            <iframe
+              title={displayTitle}
+              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : find.imageUrl ? (
           <img
             src={find.imageUrl}
             alt={displayTitle}
@@ -207,7 +234,38 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
           </div>
         )}
 
-        {find.url && (
+        {youtubeId && !inlineYouTube && (
+          <button
+            type="button"
+            onClick={() => setInlineYouTube(true)}
+            className="absolute left-1/2 -translate-x-1/2 bottom-4 no-underline border-2 border-ink bg-[#3ff07a] text-ink px-5 py-2 text-xs font-black uppercase tracking-wider shadow-retro"
+          >
+            Play Here
+          </button>
+        )}
+
+        {youtubeId && inlineYouTube && (
+          <button
+            type="button"
+            onClick={() => setInlineYouTube(false)}
+            className="absolute right-3 top-3 border-2 border-ink bg-white text-ink px-2.5 py-1 text-[11px] font-black uppercase tracking-wider shadow-retro"
+          >
+            Collapse
+          </button>
+        )}
+
+        {find.fileUrl && (
+          <a
+            href={find.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute left-1/2 -translate-x-1/2 bottom-4 no-underline border-2 border-ink bg-[#3ff07a] text-ink px-5 py-2 text-xs font-black uppercase tracking-wider shadow-retro"
+          >
+            Open File
+          </a>
+        )}
+
+        {find.url && !youtubeId && (
           <a
             href={find.url}
             target="_blank"
@@ -215,6 +273,17 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
             className="absolute left-1/2 -translate-x-1/2 bottom-4 no-underline border-2 border-ink bg-[#3ff07a] text-ink px-5 py-2 text-xs font-black uppercase tracking-wider shadow-retro"
           >
             Open Link
+          </a>
+        )}
+
+        {find.url && youtubeId && (
+          <a
+            href={find.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute left-3 top-3 no-underline border-2 border-ink bg-white text-ink px-2.5 py-1 text-[11px] font-black uppercase tracking-wider shadow-retro"
+          >
+            YouTube
           </a>
         )}
       </div>
