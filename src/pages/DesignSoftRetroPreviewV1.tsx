@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Grid3X3, Link2, List, Plus, StickyNote, X } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import { Grid3X3, Link2, List, Plus, StickyNote } from 'lucide-react';
 import type { Find, FindType } from '../data/mockData';
-import { friendIds, finds as mockFinds, sections as mockSections, users as mockUsers } from '../data/mockData';
+import { currentUserId, friendIds, finds as seedFinds, sections as seedSections, users as mockUsers } from '../data/mockData';
 
 type CardDensity = 'cozy' | 'standard' | 'compact';
+type SidebarMode = 'sections' | 'friends';
 
 const TYPE_DOT: Record<FindType, string> = {
   article: '#FF4D9E',
@@ -76,38 +77,25 @@ function pickEmoji(find: Find): string {
   return '✨';
 }
 
-function RetroModal(props: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Close"
-        className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"
-        onClick={props.onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="relative w-full max-w-lg border-2 border-ink bg-white/90 shadow-retro rounded-xl overflow-hidden animate-[pop_140ms_ease-out]"
-        style={{ transformOrigin: '50% 60%' }}
-      >
-        <div className="flex items-center justify-between gap-3 border-b-2 border-ink bg-yellow/80 px-4 py-3">
-          <div className="text-sm font-black uppercase tracking-wider text-ink">{props.title}</div>
-          <button
-            type="button"
-            className="h-8 w-8 grid place-items-center border-2 border-ink bg-white shadow-retro"
-            onClick={props.onClose}
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <div className="p-4 text-sm text-ink">{props.children}</div>
-      </div>
-      <style>{`
-        @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-      `}</style>
-    </div>
-  );
+function normalizeUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(withScheme);
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function extractFirstUrl(text: string): string | null {
+  const uriList = text.split(/\s+/).map((t) => t.trim()).filter(Boolean);
+  for (const token of uriList) {
+    const normalized = normalizeUrl(token);
+    if (normalized) return normalized;
+  }
+  return null;
 }
 
 function SoftRetroCard({ find }: { find: Find }) {
@@ -191,10 +179,18 @@ function SoftRetroCard({ find }: { find: Find }) {
 }
 
 export default function DesignSoftRetroPreviewV1() {
+  const MAX_PREVIEW_DROP_BYTES = 10 * 1024 * 1024;
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [density, setDensity] = useState<CardDensity>('standard');
   const [query, setQuery] = useState('');
-  const [showFriends, setShowFriends] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>('sections');
+  const [selectedFriendId, setSelectedFriendId] = useState<string>('');
+  const [quickLink, setQuickLink] = useState('');
+  const [quickNote, setQuickNote] = useState('');
+  const [quickNoteSectionId, setQuickNoteSectionId] = useState('');
+  const [dropError, setDropError] = useState('');
+  const [isGridDragging, setIsGridDragging] = useState(false);
+  const gridDragCounterRef = useRef(0);
 
   const friends = useMemo(() => {
     return friendIds.map((id) => mockUsers.find((u) => u.id === id)).filter(Boolean) as Array<{
@@ -206,23 +202,60 @@ export default function DesignSoftRetroPreviewV1() {
   }, []);
 
   const sections = useMemo(() => {
-    const base = mockSections.filter((s) => s.userId === 'u1');
+    const base = seedSections.filter((s) => s.userId === currentUserId);
     return [{ id: 'all', name: 'All Finds' }, ...base.map((s) => ({ id: s.id, name: s.name }))];
   }, []);
 
+  const mySections = useMemo(() => {
+    return seedSections.filter((s) => s.userId === currentUserId).slice(0, 8);
+  }, []);
+
+  const [allFinds, setAllFinds] = useState<Find[]>(() => seedFinds);
+
+  const activeAuthorId = sidebarMode === 'friends' && selectedFriendId ? selectedFriendId : currentUserId;
+
+  const activeAuthor = useMemo(() => {
+    return mockUsers.find((u) => u.id === activeAuthorId) ?? mockUsers[0];
+  }, [activeAuthorId]);
+
   const filtered = useMemo(() => {
-    const base = selectedSection === 'all' ? mockFinds : mockFinds.filter((f) => f.sectionId === selectedSection);
+    const byAuthor = allFinds.filter((f) => f.authorId === activeAuthorId);
+    const base = selectedSection === 'all' ? byAuthor : byAuthor.filter((f) => f.sectionId === selectedSection);
     const q = query.trim().toLowerCase();
     if (!q) return base;
     return base.filter((f) => `${f.title} ${f.description} ${f.url ?? ''} ${f.fileName ?? ''}`.toLowerCase().includes(q));
-  }, [selectedSection, query]);
+  }, [activeAuthorId, allFinds, query, selectedSection]);
 
   const gridCols =
     density === 'compact'
       ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
       : density === 'cozy'
         ? 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
-        : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3';
+      : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3';
+
+  function addNewFind(partial: Partial<Find>) {
+    const now = new Date();
+    const id = `pv-${Math.random().toString(16).slice(2)}`;
+    const next: Find = {
+      id,
+      authorId: currentUserId,
+      title: partial.title ?? '',
+      description: partial.description ?? '',
+      url: partial.url,
+      imageUrl: partial.imageUrl,
+      fileName: partial.fileName,
+      fileMime: partial.fileMime,
+      fileSizeBytes: partial.fileSizeBytes,
+      type: (partial.type ?? 'other') as FindType,
+      visibility: partial.visibility ?? 'specific_friends',
+      sectionId: partial.sectionId,
+      likes: [],
+      saved: [],
+      comments: [],
+      createdAt: now,
+    };
+    setAllFinds((prev) => [next, ...prev]);
+  }
 
   return (
     <div className="min-h-screen p-4 sm:p-6">
@@ -238,38 +271,80 @@ export default function DesignSoftRetroPreviewV1() {
               <p className="text-xs text-ink/60 mt-0.5 font-medium">softer, but still us</p>
             </div>
 
-            <div className="pt-4 space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-widest text-ink/55">Browse</p>
-              {sections.slice(0, 8).map((s) => (
+            <div className="pt-4 space-y-3">
+              <div className="flex items-center gap-2">
                 <button
-                  key={s.id}
-                  onClick={() => setSelectedSection(s.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all text-sm font-bold ${
-                    selectedSection === s.id
-                      ? 'bg-ink text-white border-ink shadow-retro-pink'
-                      : 'bg-white/70 border-transparent text-ink hover:border-ink hover:bg-white/80'
+                  type="button"
+                  onClick={() => setSidebarMode('sections')}
+                  className={`flex-1 h-9 border-2 font-black text-xs uppercase tracking-wider shadow-retro ${
+                    sidebarMode === 'sections' ? 'bg-ink text-white border-ink' : 'bg-white/70 text-ink border-ink/30 hover:border-ink'
                   }`}
                 >
-                  {s.name}
+                  Sections
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setSidebarMode('friends')}
+                  className={`flex-1 h-9 border-2 font-black text-xs uppercase tracking-wider shadow-retro ${
+                    sidebarMode === 'friends' ? 'bg-ink text-white border-ink' : 'bg-white/70 text-ink border-ink/30 hover:border-ink'
+                  }`}
+                >
+                  Friends
+                </button>
+              </div>
+
+              {sidebarMode === 'sections' ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-ink/55">Browse</p>
+                  {sections.slice(0, 8).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSection(s.id);
+                        setSelectedFriendId('');
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all text-sm font-bold ${
+                        selectedSection === s.id
+                          ? 'bg-ink text-white border-ink shadow-retro-pink'
+                          : 'bg-white/70 border-transparent text-ink hover:border-ink hover:bg-white/80'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-ink/55">Your friends</p>
+                  {friends.map((friend) => (
+                    <button
+                      key={friend.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedFriendId(friend.id);
+                        setSelectedSection('all');
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all text-sm font-bold ${
+                        selectedFriendId === friend.id
+                          ? 'bg-ink text-white border-ink shadow-retro-pink'
+                          : 'bg-white/70 border-transparent text-ink hover:border-ink hover:bg-white/80'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <img src={friend.avatarUrl} alt="" className="h-5 w-5 rounded-full border border-ink/20 bg-white" />
+                        <span className="truncate">{friend.displayName}</span>
+                      </span>
+                    </button>
+                  ))}
+                  <div className="pt-1 text-[11px] font-bold text-ink/55">
+                    Pick a friend to see their shared finds.
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 pt-4 border-t-2 border-ink/15">
-              <button
-                type="button"
-                onClick={() => setShowFriends(true)}
-                className="w-full text-left border-2 border-ink bg-white/70 shadow-retro rounded-xl px-3 py-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-ink/70">Friends</span>
-                  <span className="text-[11px] font-black text-ink">{friends.length}</span>
-                </div>
-                <div className="text-[11px] font-bold text-ink/55 mt-0.5">See names + invite</div>
-              </button>
-            </div>
-
-            <div className="mt-4 pt-4 border-t-2 border-ink/15">
               <p className="text-xs font-black text-ink uppercase tracking-wide mb-1">House rules</p>
               <p className="text-xs text-ink/70 leading-snug font-medium">
                 No memes. No forwards. No reposts. <span className="text-pink font-black">We will judge you.</span>
@@ -282,7 +357,7 @@ export default function DesignSoftRetroPreviewV1() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-ink">
-                {sections.find((s) => s.id === selectedSection)?.name ?? 'All Finds'}
+                {sidebarMode === 'friends' && selectedFriendId ? `${activeAuthor.displayName}’s shared finds` : (sections.find((s) => s.id === selectedSection)?.name ?? 'All Finds')}
               </h2>
               <p className="text-sm text-ink/60 mt-1 font-medium">Calm surfaces, chunky lines, still early-2000s.</p>
             </div>
@@ -290,6 +365,77 @@ export default function DesignSoftRetroPreviewV1() {
               <Plus size={16} />
               Add Find
             </button>
+          </div>
+
+          {/* Keep the existing app’s “Quick note” and “+Add Finds” flow (preview-only behavior) */}
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div className="bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-4">
+              <div className="text-sm font-black uppercase tracking-wider text-ink">Quick note</div>
+              <div className="mt-3 space-y-3">
+                <select
+                  value={quickNoteSectionId}
+                  onChange={(e) => setQuickNoteSectionId(e.target.value)}
+                  className="h-10 w-full border-2 border-ink bg-white px-3 text-xs font-black"
+                >
+                  <option value="">No section</option>
+                  {mySections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.name}
+                    </option>
+                  ))}
+                </select>
+                <textarea
+                  value={quickNote}
+                  onChange={(e) => setQuickNote(e.target.value)}
+                  placeholder="Type a note… (Cmd/Ctrl + Enter to add)"
+                  className="w-full h-24 border-2 border-ink bg-white px-3 py-2 text-sm font-semibold resize-none"
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="h-10 px-4 border-2 border-ink bg-yellow shadow-retro text-xs font-black"
+                    onClick={() => {
+                      if (!quickNote.trim()) return;
+                      addNewFind({
+                        type: 'other',
+                        description: quickNote.trim(),
+                        title: 'Quick note',
+                        sectionId: quickNoteSectionId || undefined,
+                      });
+                      setQuickNote('');
+                    }}
+                  >
+                    Add note
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-pink/70 rounded-xl border-2 border-ink shadow-retro overflow-hidden p-4">
+              <div className="text-right">
+                <div className="text-lg font-black text-ink">+Add Finds</div>
+                <div className="text-xs font-black text-ink/70 leading-snug">
+                  paste links / drag files here
+                  <br />
+                  press Enter to add
+                </div>
+              </div>
+              <div className="mt-3">
+                <input
+                  value={quickLink}
+                  onChange={(e) => setQuickLink(e.target.value)}
+                  placeholder="Paste a link…"
+                  className="w-full h-11 border-2 border-ink bg-white/85 px-3 text-sm font-semibold placeholder:text-ink/40"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return;
+                    const url = extractFirstUrl(quickLink);
+                    if (!url) return;
+                    addNewFind({ url, type: 'article', title: url, description: '' });
+                    setQuickLink('');
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="mt-6 bg-white/75 backdrop-blur-[1px] border-2 border-ink rounded-xl shadow-retro p-4">
@@ -356,32 +502,91 @@ export default function DesignSoftRetroPreviewV1() {
             </div>
           </div>
 
-          <div className={`mt-6 grid gap-6 ${gridCols}`}>
+          {/* Drop-anywhere grid area (preview only): images, links, and files */}
+          <div
+            className="relative mt-6"
+            onDragEnter={(e) => {
+              e.preventDefault();
+              gridDragCounterRef.current += 1;
+              setIsGridDragging(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              gridDragCounterRef.current = Math.max(0, gridDragCounterRef.current - 1);
+              if (gridDragCounterRef.current === 0) setIsGridDragging(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              gridDragCounterRef.current = 0;
+              setIsGridDragging(false);
+              setDropError('');
+
+              const files = Array.from(e.dataTransfer.files ?? []);
+              const uriList = e.dataTransfer.getData('text/uri-list') || '';
+              const plain = e.dataTransfer.getData('text/plain') || '';
+              const droppedUrl = extractFirstUrl(uriList) ?? extractFirstUrl(plain);
+
+              let didSomething = false;
+              if (droppedUrl) {
+                didSomething = true;
+                addNewFind({ url: droppedUrl, type: 'article', title: droppedUrl, description: '' });
+              }
+
+              for (const file of files) {
+                if (file.size > MAX_PREVIEW_DROP_BYTES) {
+                  setDropError('File too large (10MB max).');
+                  continue;
+                }
+                didSomething = true;
+                if (file.type.startsWith('image/')) {
+                  const objectUrl = URL.createObjectURL(file);
+                  addNewFind({
+                    title: file.name,
+                    description: '',
+                    imageUrl: objectUrl,
+                    type: 'other',
+                  });
+                } else {
+                  addNewFind({
+                    title: file.name,
+                    description: '',
+                    fileName: file.name,
+                    fileMime: file.type || 'application/octet-stream',
+                    fileSizeBytes: file.size,
+                    type: 'other',
+                  });
+                }
+              }
+
+              if (!didSomething) setDropError('No supported files or links found.');
+            }}
+          >
+            {isGridDragging ? (
+              <div className="pointer-events-none absolute inset-0 z-10 rounded-xl border-2 border-dashed border-ink bg-white/50 backdrop-blur-[1px] grid place-items-center">
+                <div className="border-2 border-ink bg-white shadow-retro px-4 py-3 text-sm font-black">
+                  Drop to add finds (images, links, or files)
+                </div>
+              </div>
+            ) : null}
+
+            {dropError ? (
+              <div className="mb-3 border-2 border-ink bg-white shadow-retro px-3 py-2 text-xs font-bold text-ink/70">
+                {dropError}
+              </div>
+            ) : null}
+
+            <div className={`grid gap-6 ${gridCols}`}>
             {filtered.slice(0, 12).map((find) => (
               <SoftRetroCard key={find.id} find={find} />
             ))}
+            </div>
           </div>
         </main>
       </div>
-
-      {showFriends ? (
-        <RetroModal title="Friends" onClose={() => setShowFriends(false)}>
-          <div className="text-sm font-semibold text-ink/80">
-            In the real app, friends live in the left yellow sidebar as a button. In this preview layout, they open from the sidebar card.
-          </div>
-          <div className="mt-3 space-y-2">
-            {friends.map((friend) => (
-              <div key={friend.id} className="flex items-center gap-3 border-2 border-ink/20 bg-white/70 rounded-xl p-3">
-                <img src={friend.avatarUrl} alt="" className="h-9 w-9 rounded-full border border-ink/20 bg-white" />
-                <div className="min-w-0">
-                  <div className="text-sm font-black truncate">{friend.displayName}</div>
-                  <div className="text-xs font-bold text-ink/55 truncate">@{friend.username}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </RetroModal>
-      ) : null}
     </div>
   );
 }
