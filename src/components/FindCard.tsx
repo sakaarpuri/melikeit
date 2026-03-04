@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { Find, User, FindType, Section, Visibility } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
@@ -30,8 +30,11 @@ interface FindCardProps {
   author: User;
   sections?: Section[];
   onUpdate?: (findId: string, patch: { title: string; description: string; url?: string; sectionId?: string; visibility?: Visibility }) => void;
-  onDelete?: (findId: string) => void;
   onEnsureSectionId?: (sectionId: string, subsectionName: string) => Promise<string>;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (findId: string, nextSelected: boolean) => void;
+  onQuickDelete?: (findId: string) => void;
 }
 
 function getYouTubeVideoId(url?: string): string | null {
@@ -110,7 +113,17 @@ function openInNewTab(url: string) {
   if (!win) window.location.assign(next);
 }
 
-export default function FindCard({ find, author, sections = [], onUpdate, onDelete, onEnsureSectionId }: FindCardProps) {
+export default function FindCard({
+  find,
+  author,
+  sections = [],
+  onUpdate,
+  onEnsureSectionId,
+  selectionMode = false,
+  selected = false,
+  onToggleSelect,
+  onQuickDelete,
+}: FindCardProps) {
   const [erroredPreviewUrl, setErroredPreviewUrl] = useState('');
   const [erroredVideoThumbUrl, setErroredVideoThumbUrl] = useState('');
   const [showDetails, setShowDetails] = useState(false);
@@ -160,8 +173,17 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
   }, []);
 
   return (
-    <div className="border-2 border-ink bg-[#f0f0f0] shadow-retro-lg overflow-hidden rounded-2xl">
+    <div className={`border-2 border-ink bg-[#f0f0f0] shadow-retro-lg overflow-hidden rounded-2xl ${selected ? 'ring-2 ring-pink' : ''}`}>
       <div className="bg-[#f8f8f8] border-b-2 border-ink px-2.5 py-1.5 flex items-center gap-2 select-none">
+        {selectionMode && (
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(event) => onToggleSelect?.(find.id, event.target.checked)}
+            className="h-4 w-4 accent-black cursor-pointer"
+            aria-label={`Select ${displayTitle}`}
+          />
+        )}
         <div className="w-4 h-4 border border-ink/20 shrink-0" style={{ backgroundColor: dot }} />
         <span className="text-[11px] font-bold uppercase tracking-wider text-ink truncate max-w-[42%]">
           {displayTitle}
@@ -343,6 +365,19 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                 >
                   <Pencil size={12} />
                   Edit
+                </button>
+              </Tooltip>
+            )}
+            {canEdit && (
+              <Tooltip label="Delete find">
+                <button
+                  onClick={() => onQuickDelete?.(find.id)}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-pink text-[11px] font-black uppercase tracking-wider text-ink"
+                  aria-label="Delete find"
+                  title="Delete find"
+                >
+                  <Trash2 size={12} />
+                  Del
                 </button>
               </Tooltip>
             )}
@@ -545,39 +580,14 @@ export default function FindCard({ find, author, sections = [], onUpdate, onDele
                   <button
                     type="button"
                     onClick={async () => {
-                      if (!currentUserId) return;
-                      const firstConfirm = window.confirm('Delete this find?');
-                      if (!firstConfirm) return;
-                      const secondConfirm = window.confirm('Confirm again: this delete is permanent. Continue?');
-                      if (!secondConfirm) return;
-
-                      const supabase = getSupabase();
-                      if (!supabase) {
-                        setSaveError('Supabase is not configured.');
-                        return;
-                      }
-                      setSaving(true);
-                      setSaveError('');
-                      setSaveStatus('');
-                      const { error } = await supabase
-                        .from('finds')
-                        .delete()
-                        .eq('id', find.id)
-                        .eq('user_id', currentUserId);
-                      setSaving(false);
-                      if (error) {
-                        setSaveError(error.message);
-                        return;
-                      }
-                      onDelete?.(find.id);
+                      onQuickDelete?.(find.id);
                     }}
-                    disabled={saving}
+                    disabled={saving || !onQuickDelete}
                     className="px-2.5 py-1 border-2 border-ink bg-pink text-[11px] font-black uppercase tracking-wider text-ink disabled:opacity-60"
                   >
                     Delete
                   </button>
                 </div>
-                <p className="text-[11px] font-bold text-ink/60">Delete requires two confirmations.</p>
                 {saveError && <p className="text-xs font-bold text-pink-dark">{saveError}</p>}
               </form>
             )}

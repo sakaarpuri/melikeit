@@ -12,6 +12,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_STORED_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const MAX_STORED_IMAGE_DIMENSION = 1600;
 const QUICK_NOTE_NEW_SECTION_OPTION = '__create_new_section__';
+const BATCH_MOVE_NEW_SECTION_OPTION = '__batch_create_new_section__';
 const DEFAULT_SECTION_NAMES = ['Articles', 'Videos', 'Products', 'Places', 'Recipes', 'Notes'];
 const SECTION_SUBSECTION_SEPARATOR = ' / ';
 const DROP_ANYWHERE_TOAST_KEY = 'melikeit.dropAnywhereToastSeen';
@@ -250,6 +251,12 @@ export default function MyFinds() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [dropError, setDropError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedFindIds, setSelectedFindIds] = useState<string[]>([]);
+  const [batchSectionId, setBatchSectionId] = useState('');
+  const [batchSubsectionName, setBatchSubsectionName] = useState('');
+  const [batchNewSectionName, setBatchNewSectionName] = useState('');
+  const [batchBusy, setBatchBusy] = useState(false);
   const [quickLink, setQuickLink] = useState('');
   const [quickNote, setQuickNote] = useState('');
   const [quickNoteSaving, setQuickNoteSaving] = useState(false);
@@ -306,6 +313,12 @@ export default function MyFinds() {
     return sorted;
   }, [finds, activeSection, sortMode]);
 
+  const filteredFindIds = useMemo(() => filtered.map((find) => find.id), [filtered]);
+  const selectedVisibleCount = useMemo(
+    () => filteredFindIds.filter((id) => selectedFindIds.includes(id)).length,
+    [filteredFindIds, selectedFindIds]
+  );
+
   useEffect(() => {
     window.localStorage.setItem('melikeit.sortMode', sortMode);
   }, [sortMode]);
@@ -313,6 +326,17 @@ export default function MyFinds() {
   useEffect(() => {
     window.localStorage.setItem('melikeit.gridMode', gridMode);
   }, [gridMode]);
+
+  useEffect(() => {
+    if (selectionMode) return;
+    setSelectedFindIds([]);
+  }, [selectionMode]);
+
+  useEffect(() => {
+    if (!isFriendsView) return;
+    setSelectionMode(false);
+    setSelectedFindIds([]);
+  }, [isFriendsView]);
 
   const resolveSectionName = (sectionId?: string) => (
     sectionId ? mySections.find((section) => section.id === sectionId)?.name : undefined
@@ -912,6 +936,49 @@ export default function MyFinds() {
 
   const removeFindFromState = (findId: string) => {
     setFinds((prev) => prev.filter((find) => find.id !== findId));
+    setSelectedFindIds((prev) => prev.filter((id) => id !== findId));
+  };
+
+  const toggleSelectedFind = (findId: string, nextSelected: boolean) => {
+    setSelectedFindIds((prev) => {
+      if (nextSelected) {
+        if (prev.includes(findId)) return prev;
+        return [...prev, findId];
+      }
+      return prev.filter((id) => id !== findId);
+    });
+  };
+
+  const toggleSelectAllVisible = (nextSelected: boolean) => {
+    setSelectedFindIds((prev) => {
+      if (nextSelected) {
+        const next = new Set(prev);
+        filteredFindIds.forEach((id) => next.add(id));
+        return Array.from(next);
+      }
+      const hidden = prev.filter((id) => !filteredFindIds.includes(id));
+      return hidden;
+    });
+  };
+
+  const quickDeleteFind = async (findId: string) => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    const confirmed = window.confirm('Delete this find permanently?');
+    if (!confirmed) return;
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+    const { error: deleteError } = await supabase.from('finds').delete().eq('id', findId).eq('user_id', user.id);
+    if (deleteError) {
+      setDropError(deleteError.message);
+      return;
+    }
+    removeFindFromState(findId);
   };
 
   const createSection = async (args: { name: string; visibility: Visibility; subsectionName?: string }): Promise<Section | null> => {
@@ -958,6 +1025,101 @@ export default function MyFinds() {
       visibility: baseSection.visibility,
     });
     return created?.id ?? sectionId;
+  };
+
+  const moveSelectedFinds = async () => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    if (selectedFindIds.length === 0) {
+      setDropError('Select finds first.');
+      return;
+    }
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+
+    let targetSectionId: string | null = batchSectionId || null;
+    setBatchBusy(true);
+    setDropError('');
+    try {
+      if (batchSectionId === BATCH_MOVE_NEW_SECTION_OPTION) {
+        const baseName = batchNewSectionName.trim();
+        if (!baseName) {
+          setDropError('Enter a new section name.');
+          return;
+        }
+        const created = await createSection({
+          name: baseName,
+          subsectionName: batchSubsectionName.trim(),
+          visibility: 'all_friends',
+        });
+        if (!created) {
+          setDropError('Could not create section.');
+          return;
+        }
+        targetSectionId = created.id;
+        setBatchSectionId(created.id);
+        setBatchNewSectionName('');
+      } else if (targetSectionId && batchSubsectionName.trim()) {
+        targetSectionId = await ensureSectionIdWithSubsection(targetSectionId, batchSubsectionName.trim());
+      }
+
+      const { error: updateError } = await supabase
+        .from('finds')
+        .update({ section_id: targetSectionId })
+        .in('id', selectedFindIds)
+        .eq('user_id', user.id);
+      if (updateError) {
+        setDropError(updateError.message);
+        return;
+      }
+      setFinds((prev) =>
+        prev.map((find) => (selectedFindIds.includes(find.id) ? { ...find, sectionId: targetSectionId ?? undefined } : find))
+      );
+      setSelectedFindIds([]);
+      setBatchSubsectionName('');
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const deleteSelectedFinds = async () => {
+    if (!user) {
+      promptSignIn();
+      return;
+    }
+    if (selectedFindIds.length === 0) {
+      setDropError('Select finds first.');
+      return;
+    }
+    const confirmed = window.confirm(`Delete ${selectedFindIds.length} selected find(s) permanently?`);
+    if (!confirmed) return;
+    const supabase = getSupabase();
+    if (!supabase) {
+      setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+    setBatchBusy(true);
+    setDropError('');
+    try {
+      const { error: deleteError } = await supabase
+        .from('finds')
+        .delete()
+        .in('id', selectedFindIds)
+        .eq('user_id', user.id);
+      if (deleteError) {
+        setDropError(deleteError.message);
+        return;
+      }
+      setFinds((prev) => prev.filter((find) => !selectedFindIds.includes(find.id)));
+      setSelectedFindIds([]);
+    } finally {
+      setBatchBusy(false);
+    }
   };
 
   const promptSignIn = () => {
@@ -1234,6 +1396,85 @@ export default function MyFinds() {
           </div>
         </div>
 
+        {!isFriendsView && (
+          <div className="mb-3 rounded-xl border-2 border-ink bg-white/75 p-2.5 shadow-retro">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectionMode((prev) => !prev)}
+                className={`px-2.5 py-1.5 rounded-lg border-2 border-ink text-xs font-black ${
+                  selectionMode ? 'bg-cyan' : 'bg-white'
+                }`}
+              >
+                {selectionMode ? 'Done Selecting' : 'Select Finds'}
+              </button>
+
+              {selectionMode && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => toggleSelectAllVisible(selectedVisibleCount !== filteredFindIds.length)}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+                  >
+                    {selectedVisibleCount === filteredFindIds.length && filteredFindIds.length > 0 ? 'Unselect Visible' : 'Select Visible'}
+                  </button>
+
+                  <span className="text-xs font-black text-ink/70">{selectedFindIds.length} selected</span>
+
+                  <select
+                    value={batchSectionId}
+                    onChange={(e) => setBatchSectionId(e.target.value)}
+                    className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+                    aria-label="Move selected finds to section"
+                  >
+                    <option value="">No section</option>
+                    {mySections.map((section) => (
+                      <option key={section.id} value={section.id}>
+                        {section.name}
+                      </option>
+                    ))}
+                    <option value={BATCH_MOVE_NEW_SECTION_OPTION}>+ New section</option>
+                  </select>
+
+                  {batchSectionId === BATCH_MOVE_NEW_SECTION_OPTION && (
+                    <input
+                      value={batchNewSectionName}
+                      onChange={(e) => setBatchNewSectionName(e.target.value)}
+                      placeholder="New section name"
+                      className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+                    />
+                  )}
+
+                  <input
+                    value={batchSubsectionName}
+                    onChange={(e) => setBatchSubsectionName(e.target.value)}
+                    placeholder="Subsection (optional)"
+                    className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => void moveSelectedFinds()}
+                    disabled={batchBusy || selectedFindIds.length === 0}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-yellow/70 text-xs font-black disabled:opacity-60"
+                  >
+                    Move Selected
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void deleteSelectedFinds()}
+                    disabled={batchBusy || selectedFindIds.length === 0}
+                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-pink text-xs font-black disabled:opacity-60"
+                  >
+                    Delete Selected
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="relative">
           <div
             onDragEnter={(e) => {
@@ -1287,8 +1528,13 @@ export default function MyFinds() {
                   author={isFriendsView ? (friendAuthor ?? me) : me}
                   sections={mySections}
                   onUpdate={updateFindInState}
-                  onDelete={removeFindFromState}
                   onEnsureSectionId={ensureSectionIdWithSubsection}
+                  selectionMode={selectionMode && !isFriendsView}
+                  selected={selectedFindIds.includes(find.id)}
+                  onToggleSelect={toggleSelectedFind}
+                  onQuickDelete={(findId) => {
+                    void quickDeleteFind(findId);
+                  }}
                 />
               </div>
             ))}
