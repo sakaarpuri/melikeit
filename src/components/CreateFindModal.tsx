@@ -12,6 +12,7 @@ interface CreateFindModalProps {
     description: string;
     url: string;
     sectionId: string;
+    subsectionName?: string;
     imageFile?: File;
   }) => void;
 }
@@ -21,6 +22,7 @@ export default function CreateFindModal({ sections, onClose, onSubmit }: CreateF
   const [description, setDescription] = useState('');
   const [url, setUrl] = useState('');
   const [sectionId, setSectionId] = useState('');
+  const [subsectionName, setSubsectionName] = useState('');
   const [imageFile, setImageFile] = useState<File | undefined>(undefined);
   const [uploadError, setUploadError] = useState('');
   const [draggingFile, setDraggingFile] = useState(false);
@@ -53,7 +55,7 @@ export default function CreateFindModal({ sections, onClose, onSubmit }: CreateF
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() && !url.trim() && !imageFile) return;
-    onSubmit({ title, description, url, sectionId, imageFile });
+    onSubmit({ title, description, url, sectionId, subsectionName: subsectionName.trim(), imageFile });
     onClose();
   };
 
@@ -174,7 +176,14 @@ export default function CreateFindModal({ sections, onClose, onSubmit }: CreateF
                   <Hash size={12} /> Add to Section (optional)
                 </span>
               </label>
-              <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} className={inputClass}>
+              <select
+                value={sectionId}
+                onChange={(e) => {
+                  setSectionId(e.target.value);
+                  if (!e.target.value) setSubsectionName('');
+                }}
+                className={inputClass}
+              >
                 <option value="">No section</option>
                 {mySections.map((section) => (
                   <option key={section.id} value={section.id}>
@@ -182,6 +191,15 @@ export default function CreateFindModal({ sections, onClose, onSubmit }: CreateF
                   </option>
                 ))}
               </select>
+              {!!sectionId && (
+                <input
+                  type="text"
+                  value={subsectionName}
+                  onChange={(e) => setSubsectionName(e.target.value)}
+                  placeholder="Subsection (optional)"
+                  className={`${inputClass} mt-2`}
+                />
+              )}
             </div>
           )}
 

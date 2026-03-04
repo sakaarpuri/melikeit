@@ -51,6 +51,25 @@ function toStorageErrorMessage(error: unknown): string {
   return message || 'Unexpected storage error.';
 }
 
+function resolveAuthRedirectUrl(): string {
+  const fallback = `${window.location.origin}/auth/callback`;
+  const configured = (import.meta.env.VITE_SUPABASE_REDIRECT_URL as string | undefined)?.trim();
+  if (!configured) return fallback;
+  try {
+    const configuredUrl = new URL(configured, window.location.origin);
+    const currentUrl = new URL(window.location.origin);
+    const configuredHost = configuredUrl.hostname.toLowerCase();
+    const currentHost = currentUrl.hostname.toLowerCase();
+    const configuredIsLocal = configuredHost === 'localhost' || configuredHost === '127.0.0.1';
+    const currentIsLocal = currentHost === 'localhost' || currentHost === '127.0.0.1';
+    if (!currentIsLocal && configuredIsLocal) return fallback;
+    if (currentUrl.protocol === 'https:' && configuredUrl.protocol !== 'https:') return fallback;
+    return configuredUrl.toString();
+  } catch {
+    return fallback;
+  }
+}
+
 function inferFindType(args: { sectionName?: string; url?: string; mimeType?: string }): FindType {
   const section = args.sectionName?.toLowerCase() ?? '';
   const url = args.url?.toLowerCase() ?? '';
@@ -228,6 +247,7 @@ export default function MyFinds() {
   });
 
   const [showModal, setShowModal] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [dropError, setDropError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [quickLink, setQuickLink] = useState('');
@@ -243,6 +263,12 @@ export default function MyFinds() {
   const [isGridDragging, setIsGridDragging] = useState(false);
   const gridDragCounterRef = useRef(0);
   const [friendAuthor, setFriendAuthor] = useState<User | null>(null);
+  const [authMode, setAuthMode] = useState<'sign_in' | 'sign_up'>('sign_in');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authInfo, setAuthInfo] = useState('');
 
   const me: User = useMemo(() => {
     const fullName = user?.user_metadata?.full_name as string | undefined;
@@ -487,7 +513,10 @@ export default function MyFinds() {
   };
 
   const createFind = async (args: { title: string; description: string; url: string; sectionId: string; imageFile?: File; file?: File }) => {
-    if (!user) return;
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
     const supabase = getSupabase();
     if (!supabase) {
       setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
@@ -630,6 +659,10 @@ export default function MyFinds() {
 
   const createFromUpload = async (file: File) => {
     try {
+      if (!user) {
+        setShowSignInPrompt(true);
+        return false;
+      }
       if (file.size > MAX_UPLOAD_BYTES) {
         setDropError('File is too large. Maximum size is 10MB.');
         return false;
@@ -659,6 +692,10 @@ export default function MyFinds() {
   };
 
   const processIncomingFiles = async (incoming: FileList | File[]) => {
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
     const files = Array.from(incoming);
     if (files.length === 0) {
       setDropError('No supported files or links found.');
@@ -773,6 +810,10 @@ export default function MyFinds() {
   };
 
   const submitUrl = async (raw: string) => {
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
     const url = normalizeUrl(raw);
     if (!url) {
       setDropError('Please paste a valid link.');
@@ -824,6 +865,10 @@ export default function MyFinds() {
   };
 
   const submitQuickNote = async () => {
+    if (!user) {
+      setShowSignInPrompt(true);
+      return;
+    }
     const raw = quickNote.trim();
     if (!raw) return;
     setQuickNoteSaving(true);
@@ -913,6 +958,53 @@ export default function MyFinds() {
       visibility: baseSection.visibility,
     });
     return created?.id ?? sectionId;
+  };
+
+  const promptSignIn = () => {
+    setAuthError('');
+    setAuthInfo('');
+    setShowSignInPrompt(true);
+  };
+
+  const submitSignInPrompt = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setAuthError('');
+    setAuthInfo('');
+    const supabase = getSupabase();
+    if (!supabase) {
+      setAuthError('Supabase is not configured.');
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      if (authMode === 'sign_in') {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authEmail.trim(),
+          password: authPassword,
+        });
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+        setShowSignInPrompt(false);
+        setAuthPassword('');
+        setAuthInfo('');
+      } else {
+        const { error } = await supabase.auth.signUp({
+          email: authEmail.trim(),
+          password: authPassword,
+          options: { emailRedirectTo: resolveAuthRedirectUrl() },
+        });
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+        setAuthInfo('Confirmation email sent. Please verify and sign in.');
+        setAuthPassword('');
+      }
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   if (loading) {
@@ -1083,7 +1175,13 @@ export default function MyFinds() {
                 <div className="mt-2 flex justify-end">
                   <button
                     type="button"
-                    onClick={() => setShowModal(true)}
+                    onClick={() => {
+                      if (!user) {
+                        promptSignIn();
+                        return;
+                      }
+                      setShowModal(true);
+                    }}
                     className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
                   >
                     Add manually
@@ -1225,8 +1323,87 @@ export default function MyFinds() {
       <CreateFindModal
         sections={mySections}
         onClose={() => setShowModal(false)}
-        onSubmit={(data) => void createFind(data)}
+        onSubmit={(data) => {
+          void (async () => {
+            if (!user) {
+              promptSignIn();
+              return;
+            }
+            let targetSectionId = data.sectionId;
+            if (targetSectionId && data.subsectionName?.trim()) {
+              targetSectionId = await ensureSectionIdWithSubsection(targetSectionId, data.subsectionName);
+            }
+            await createFind({
+              title: data.title,
+              description: data.description,
+              url: data.url,
+              sectionId: targetSectionId,
+              imageFile: data.imageFile,
+            });
+          })();
+        }}
       />
+    )}
+
+    {showSignInPrompt && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-ink/50" onClick={() => setShowSignInPrompt(false)} />
+        <div className="relative w-full max-w-md bg-white border-2 border-ink rounded-xl shadow-retro-lg overflow-hidden">
+          <div className="px-5 py-4 bg-yellow border-b-2 border-ink">
+            <h2 className="text-lg font-black text-ink uppercase tracking-wide">Sign in to add finds</h2>
+            <p className="text-sm text-ink/70 font-medium mt-1">You can browse first, but adding needs an account.</p>
+          </div>
+          <div className="p-5">
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => { setAuthMode('sign_in'); setAuthError(''); setAuthInfo(''); }}
+                className={`flex-1 px-3 py-2 rounded-lg border-2 border-ink text-xs font-black uppercase tracking-wider ${
+                  authMode === 'sign_in' ? 'bg-yellow/70 text-ink shadow-retro' : 'bg-white text-ink hover:bg-yellow'
+                }`}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('sign_up'); setAuthError(''); setAuthInfo(''); }}
+                className={`flex-1 px-3 py-2 rounded-lg border-2 border-ink text-xs font-black uppercase tracking-wider ${
+                  authMode === 'sign_up' ? 'bg-yellow/70 text-ink shadow-retro' : 'bg-white text-ink hover:bg-yellow'
+                }`}
+              >
+                Sign up
+              </button>
+            </div>
+            <form onSubmit={submitSignInPrompt} className="space-y-3">
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="Email"
+                required
+                className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-ink text-sm text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+              />
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Password"
+                required
+                minLength={6}
+                className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-ink text-sm text-ink placeholder-ink/40 focus:outline-none focus:border-pink"
+              />
+              <button
+                disabled={authBusy}
+                className="w-full px-4 py-3 rounded-xl border-2 border-ink bg-pink text-ink font-black shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all disabled:opacity-60"
+              >
+                {authBusy ? 'Please wait...' : authMode === 'sign_in' ? 'Sign in' : 'Create account'}
+              </button>
+              {authError && <p className="text-xs font-bold text-pink-dark">{authError}</p>}
+              {authInfo && <p className="text-xs font-bold text-ink/70">{authInfo}</p>}
+            </form>
+          </div>
+        </div>
+      </div>
     )}
 
     {showHelp && (
