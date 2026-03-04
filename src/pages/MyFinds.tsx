@@ -1086,6 +1086,7 @@ export default function MyFinds() {
       );
       setSelectedFindIds([]);
       setBatchSubsectionName('');
+      setSelectionMode(false);
     } finally {
       setBatchBusy(false);
     }
@@ -1121,6 +1122,7 @@ export default function MyFinds() {
       }
       setFinds((prev) => prev.filter((find) => !selectedFindIds.includes(find.id)));
       setSelectedFindIds([]);
+      setSelectionMode(false);
     } finally {
       setBatchBusy(false);
     }
