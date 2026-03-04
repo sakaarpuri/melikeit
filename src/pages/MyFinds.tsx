@@ -1217,7 +1217,11 @@ export default function MyFinds() {
         {showValueProp && (
           <div className="mb-3 sm:mb-4">
             <p className="text-xs sm:text-sm font-medium text-ink/60 leading-snug">
-              Your bookmarks, YouTube favorites, screenshots, and random links can all live here, so you actually open them again in real life.
+              Your bookmarks, YouTube favorites,
+              <br />
+              screenshots, and random links can all live here,
+              <br />
+              so you actually open them again in real life.
             </p>
           </div>
         )}
