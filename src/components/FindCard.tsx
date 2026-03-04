@@ -377,7 +377,6 @@ export default function FindCard({
                   title="Delete find"
                 >
                   <Trash2 size={12} />
-                  del
                 </button>
               </Tooltip>
             )}

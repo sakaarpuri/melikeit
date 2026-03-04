@@ -1406,11 +1406,11 @@ export default function MyFinds() {
               <button
                 type="button"
                 onClick={() => setSelectionMode((prev) => !prev)}
-                className={`px-2.5 py-2 rounded-lg border-2 border-ink text-xs font-black shadow-retro ${
+                className={`px-2.5 py-2 rounded-lg border-2 border-ink text-xs font-black ${
                   selectionMode ? 'bg-cyan/55 text-ink' : 'bg-white text-ink'
                 }`}
               >
-                {selectionMode ? 'Done Selecting' : 'Select Finds'}
+                {selectionMode ? 'Close Select' : 'Select'}
               </button>
 
               {selectionMode && (
