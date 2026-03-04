@@ -6,6 +6,7 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 interface CreateFindModalProps {
   sections: Section[];
+  initialUrl?: string;
   onClose: () => void;
   onSubmit: (find: {
     title: string;
@@ -17,10 +18,10 @@ interface CreateFindModalProps {
   }) => void;
 }
 
-export default function CreateFindModal({ sections, onClose, onSubmit }: CreateFindModalProps) {
+export default function CreateFindModal({ sections, initialUrl = '', onClose, onSubmit }: CreateFindModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(initialUrl);
   const [sectionId, setSectionId] = useState('');
   const [subsectionName, setSubsectionName] = useState('');
   const [imageFile, setImageFile] = useState<File | undefined>(undefined);
@@ -51,6 +52,10 @@ export default function CreateFindModal({ sections, onClose, onSubmit }: CreateF
     if (!previewUrl) return;
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  useEffect(() => {
+    setUrl(initialUrl);
+  }, [initialUrl]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

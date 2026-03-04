@@ -3,11 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 import FindCard from '../components/FindCard';
 import CreateFindModal from '../components/CreateFindModal';
 import type { Find, FindType, Section, User, Visibility } from '../data/mockData';
-import { JOKES_OF_THE_DAY } from '../data/mockData';
 import { useAuth } from '../auth/useAuth';
 import { getSupabase } from '../supabase/client';
 
-const todaysJoke = JOKES_OF_THE_DAY[new Date().getDate() % JOKES_OF_THE_DAY.length];
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_STORED_IMAGE_BYTES = 1.5 * 1024 * 1024;
 const MAX_STORED_IMAGE_DIMENSION = 1600;
@@ -16,6 +14,7 @@ const BATCH_MOVE_NEW_SECTION_OPTION = '__batch_create_new_section__';
 const DEFAULT_SECTION_NAMES = ['Articles', 'Videos', 'Products', 'Places', 'Recipes', 'Notes'];
 const SECTION_SUBSECTION_SEPARATOR = ' / ';
 const DROP_ANYWHERE_TOAST_KEY = 'melikeit.dropAnywhereToastSeen';
+const VALUE_PROP_SEEN_KEY = 'melikeit.valuePropSeen';
 const STORAGE_BUCKET = ((import.meta.env.VITE_SUPABASE_STORAGE_BUCKET as string | undefined)?.trim() || 'find_images');
 
 function handleFromName(name?: string): string {
@@ -251,9 +250,11 @@ export default function MyFinds() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [dropError, setDropError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [showValueProp, setShowValueProp] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedFindIds, setSelectedFindIds] = useState<string[]>([]);
   const [pendingDeleteFindId, setPendingDeleteFindId] = useState<string | null>(null);
+  const [manualPrefillUrl, setManualPrefillUrl] = useState('');
   const [batchSectionId, setBatchSectionId] = useState('');
   const [batchSubsectionName, setBatchSubsectionName] = useState('');
   const [batchNewSectionName, setBatchNewSectionName] = useState('');
@@ -878,6 +879,13 @@ export default function MyFinds() {
   }, []);
 
   useEffect(() => {
+    const seen = window.localStorage.getItem(VALUE_PROP_SEEN_KEY);
+    if (seen === '1') return;
+    window.localStorage.setItem(VALUE_PROP_SEEN_KEY, '1');
+    setShowValueProp(true);
+  }, []);
+
+  useEffect(() => {
     if (!showHelp) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setShowHelp(false);
@@ -1206,18 +1214,13 @@ export default function MyFinds() {
           </div>
         )}
 
-        <div className="mb-3 sm:mb-4 grid gap-2 lg:gap-4 lg:grid-cols-[1fr_692px] items-start">
-          <p className="text-xs sm:text-sm font-medium italic text-ink/60 leading-snug pt-1">
-            Your bookmarks, YouTube favorites, screenshots, and random links can all live here, so you actually open them again in real life.
-          </p>
-          <div className="w-full p-3 sm:p-4 retro-surface-soft rounded-xl flex items-start gap-3">
-            <span className="text-2xl shrink-0">:|</span>
-            <div>
-              <p className="text-xs font-black text-ink uppercase tracking-wider mb-1">Joke of the Day</p>
-              <p className="text-sm font-medium text-ink leading-snug">{todaysJoke}</p>
-            </div>
+        {showValueProp && (
+          <div className="mb-3 sm:mb-4">
+            <p className="text-xs sm:text-sm font-medium text-ink/60 leading-snug">
+              Your bookmarks, YouTube favorites, screenshots, and random links can all live here, so you actually open them again in real life.
+            </p>
           </div>
-        </div>
+        )}
 
         {!isFriendsView && (
           <div className="mb-4 sm:mb-6 flex flex-col gap-2 sm:gap-3 lg:flex-row lg:justify-end">
@@ -1348,11 +1351,15 @@ export default function MyFinds() {
                         promptSignIn();
                         return;
                       }
+                      const prefill = quickLink.trim();
+                      setManualPrefillUrl(prefill);
                       setShowModal(true);
                     }}
                     className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink shadow-retro hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-retro-lg transition-all"
+                    aria-label="Open add find form"
+                    title="Open add find form"
                   >
-                    Add manually
+                    +
                   </button>
                 </div>
               </div>
@@ -1367,6 +1374,17 @@ export default function MyFinds() {
             {finds.length} finds{isFriendsView ? ` from ${friendAuthor?.displayName ?? 'friend'}` : ''}
           </p>
           <div className="flex flex-wrap items-center gap-2 justify-end">
+            {!isFriendsView && (
+              <button
+                type="button"
+                onClick={() => setSelectionMode((prev) => !prev)}
+                className={`px-2.5 py-2 rounded-lg border-2 border-ink text-xs font-black ${
+                  selectionMode ? 'bg-cyan/55 text-ink' : 'bg-white text-ink'
+                }`}
+              >
+                {selectionMode ? 'Close Select' : 'Select'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowHelp(true)}
@@ -1402,81 +1420,67 @@ export default function MyFinds() {
           </div>
         </div>
 
-        {!isFriendsView && (
+        {!isFriendsView && selectionMode && (
           <div className="mb-3 rounded-xl border-2 border-ink bg-white/75 p-2.5 shadow-retro">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setSelectionMode((prev) => !prev)}
-                className={`px-2.5 py-2 rounded-lg border-2 border-ink text-xs font-black ${
-                  selectionMode ? 'bg-cyan/55 text-ink' : 'bg-white text-ink'
-                }`}
+                onClick={() => toggleSelectAllVisible(selectedVisibleCount !== filteredFindIds.length)}
+                className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
               >
-                {selectionMode ? 'Close Select' : 'Select'}
+                {selectedVisibleCount === filteredFindIds.length && filteredFindIds.length > 0 ? 'Unselect Visible' : 'Select Visible'}
               </button>
 
-              {selectionMode && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => toggleSelectAllVisible(selectedVisibleCount !== filteredFindIds.length)}
-                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
-                  >
-                    {selectedVisibleCount === filteredFindIds.length && filteredFindIds.length > 0 ? 'Unselect Visible' : 'Select Visible'}
-                  </button>
+              <span className="text-xs font-black text-ink/70">{selectedFindIds.length} selected</span>
 
-                  <span className="text-xs font-black text-ink/70">{selectedFindIds.length} selected</span>
+              <select
+                value={batchSectionId}
+                onChange={(e) => setBatchSectionId(e.target.value)}
+                className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+                aria-label="Move selected finds to section"
+              >
+                <option value="">No section</option>
+                {mySections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+                <option value={BATCH_MOVE_NEW_SECTION_OPTION}>+ New section</option>
+              </select>
 
-                  <select
-                    value={batchSectionId}
-                    onChange={(e) => setBatchSectionId(e.target.value)}
-                    className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
-                    aria-label="Move selected finds to section"
-                  >
-                    <option value="">No section</option>
-                    {mySections.map((section) => (
-                      <option key={section.id} value={section.id}>
-                        {section.name}
-                      </option>
-                    ))}
-                    <option value={BATCH_MOVE_NEW_SECTION_OPTION}>+ New section</option>
-                  </select>
-
-                  {batchSectionId === BATCH_MOVE_NEW_SECTION_OPTION && (
-                    <input
-                      value={batchNewSectionName}
-                      onChange={(e) => setBatchNewSectionName(e.target.value)}
-                      placeholder="New section name"
-                      className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
-                    />
-                  )}
-
-                  <input
-                    value={batchSubsectionName}
-                    onChange={(e) => setBatchSubsectionName(e.target.value)}
-                    placeholder="Subsection (optional)"
-                    className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => void moveSelectedFinds()}
-                    disabled={batchBusy || selectedFindIds.length === 0}
-                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-yellow/70 text-xs font-black disabled:opacity-60"
-                  >
-                    Move Selected
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void deleteSelectedFinds()}
-                    disabled={batchBusy || selectedFindIds.length === 0}
-                    className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-pink text-xs font-black disabled:opacity-60"
-                  >
-                    Delete Selected
-                  </button>
-                </>
+              {batchSectionId === BATCH_MOVE_NEW_SECTION_OPTION && (
+                <input
+                  value={batchNewSectionName}
+                  onChange={(e) => setBatchNewSectionName(e.target.value)}
+                  placeholder="New section name"
+                  className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+                />
               )}
+
+              <input
+                value={batchSubsectionName}
+                onChange={(e) => setBatchSubsectionName(e.target.value)}
+                placeholder="Subsection (optional)"
+                className="px-2 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black"
+              />
+
+              <button
+                type="button"
+                onClick={() => void moveSelectedFinds()}
+                disabled={batchBusy || selectedFindIds.length === 0}
+                className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-yellow/70 text-xs font-black disabled:opacity-60"
+              >
+                Move Selected
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void deleteSelectedFinds()}
+                disabled={batchBusy || selectedFindIds.length === 0}
+                className="px-2.5 py-1.5 rounded-lg border-2 border-ink bg-pink text-xs font-black disabled:opacity-60"
+              >
+                Delete Selected
+              </button>
             </div>
           </div>
         )}
@@ -1574,7 +1578,11 @@ export default function MyFinds() {
     {showModal && (
       <CreateFindModal
         sections={mySections}
-        onClose={() => setShowModal(false)}
+        initialUrl={manualPrefillUrl}
+        onClose={() => {
+          setShowModal(false);
+          setManualPrefillUrl('');
+        }}
         onSubmit={(data) => {
           void (async () => {
             if (!user) {
@@ -1592,6 +1600,7 @@ export default function MyFinds() {
               sectionId: targetSectionId,
               imageFile: data.imageFile,
             });
+            setQuickLink('');
           })();
         }}
       />
