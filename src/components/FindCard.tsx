@@ -372,12 +372,12 @@ export default function FindCard({
               <Tooltip label="Delete find">
                 <button
                   onClick={() => onQuickDelete?.(find.id)}
-                  className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-pink text-[11px] font-black uppercase tracking-wider text-ink"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 border-2 border-ink bg-[#ececec] text-[11px] font-black uppercase tracking-wider text-ink/80"
                   aria-label="Delete find"
                   title="Delete find"
                 >
                   <Trash2 size={12} />
-                  Del
+                  del
                 </button>
               </Tooltip>
             )}

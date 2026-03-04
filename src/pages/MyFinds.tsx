@@ -253,6 +253,7 @@ export default function MyFinds() {
   const [isDragging, setIsDragging] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedFindIds, setSelectedFindIds] = useState<string[]>([]);
+  const [pendingDeleteFindId, setPendingDeleteFindId] = useState<string | null>(null);
   const [batchSectionId, setBatchSectionId] = useState('');
   const [batchSubsectionName, setBatchSubsectionName] = useState('');
   const [batchNewSectionName, setBatchNewSectionName] = useState('');
@@ -317,6 +318,10 @@ export default function MyFinds() {
   const selectedVisibleCount = useMemo(
     () => filteredFindIds.filter((id) => selectedFindIds.includes(id)).length,
     [filteredFindIds, selectedFindIds]
+  );
+  const pendingDeleteFind = useMemo(
+    () => finds.find((find) => find.id === pendingDeleteFindId) ?? null,
+    [finds, pendingDeleteFindId]
   );
 
   useEffect(() => {
@@ -966,8 +971,6 @@ export default function MyFinds() {
       promptSignIn();
       return;
     }
-    const confirmed = window.confirm('Delete this find permanently?');
-    if (!confirmed) return;
     const supabase = getSupabase();
     if (!supabase) {
       setError('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
@@ -979,6 +982,7 @@ export default function MyFinds() {
       return;
     }
     removeFindFromState(findId);
+    setPendingDeleteFindId((current) => (current === findId ? null : current));
   };
 
   const createSection = async (args: { name: string; visibility: Visibility; subsectionName?: string }): Promise<Section | null> => {
@@ -1402,8 +1406,8 @@ export default function MyFinds() {
               <button
                 type="button"
                 onClick={() => setSelectionMode((prev) => !prev)}
-                className={`px-2.5 py-1.5 rounded-lg border-2 border-ink text-xs font-black ${
-                  selectionMode ? 'bg-cyan' : 'bg-white'
+                className={`px-2.5 py-2 rounded-lg border-2 border-ink text-xs font-black shadow-retro ${
+                  selectionMode ? 'bg-cyan/55 text-ink' : 'bg-white text-ink'
                 }`}
               >
                 {selectionMode ? 'Done Selecting' : 'Select Finds'}
@@ -1533,7 +1537,7 @@ export default function MyFinds() {
                   selected={selectedFindIds.includes(find.id)}
                   onToggleSelect={toggleSelectedFind}
                   onQuickDelete={(findId) => {
-                    void quickDeleteFind(findId);
+                    setPendingDeleteFindId(findId);
                   }}
                 />
               </div>
@@ -1647,6 +1651,42 @@ export default function MyFinds() {
               {authError && <p className="text-xs font-bold text-pink-dark">{authError}</p>}
               {authInfo && <p className="text-xs font-bold text-ink/70">{authInfo}</p>}
             </form>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {pendingDeleteFind && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-ink/45" onClick={() => setPendingDeleteFindId(null)} />
+        <div className="relative w-full max-w-sm rounded-xl border-2 border-ink bg-white shadow-retro-lg overflow-hidden">
+          <div className="px-4 py-3 border-b-2 border-ink bg-[#ececec]">
+            <p className="text-xs font-black uppercase tracking-wider text-ink">Delete find?</p>
+          </div>
+          <div className="p-4 space-y-3">
+            <p className="text-sm font-medium text-ink">
+              This will permanently delete{' '}
+              <span className="font-black">{pendingDeleteFind.title || 'this find'}</span>.
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteFindId(null)}
+                className="px-3 py-1.5 rounded-lg border-2 border-ink bg-white text-xs font-black text-ink"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!pendingDeleteFindId) return;
+                  void quickDeleteFind(pendingDeleteFindId);
+                }}
+                className="px-3 py-1.5 rounded-lg border-2 border-ink bg-pink text-xs font-black text-ink"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </div>
